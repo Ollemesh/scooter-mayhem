@@ -203,6 +203,10 @@
     box-shadow: 0 0 30px #00ffcc88;
   }
   #btn-start:hover { background: #44ffdd; transform: scale(1.05); }
+  @keyframes copBlink {
+    from { opacity: 1; }
+    to   { opacity: 0.6; }
+  }
 </style>
 </head>
 <body>
@@ -271,6 +275,35 @@
   </div>
 </div>
 
+<!-- Поймал мент -->
+<div id="caught-screen" style="
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.92);z-index:200;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  color:#fff;text-align:center;">
+  <div style="font-size:80px;margin-bottom:16px;">👮</div>
+  <h1 style="font-size:48px;color:#ffcc00;text-shadow:0 0 30px #ffaa00;margin-bottom:12px;">ПОЙМАЛИ!</h1>
+  <div style="font-size:20px;color:#aaa;margin-bottom:8px;">Не смог разбиться.</div>
+  <div id="caught-reason" style="font-size:16px;color:#888;margin-bottom:32px;">Самокат конфискован. Страховка не поможет.</div>
+  <div style="background:rgba(255,204,0,0.1);border:2px solid #ffcc00;border-radius:12px;padding:20px 40px;margin-bottom:28px;">
+    <div style="font-size:18px;color:#ffcc00;">⭐ Набрал очков: <span id="caught-score" style="font-size:26px;font-weight:bold;">0</span></div>
+    <div style="font-size:14px;color:#888;margin-top:6px;">В следующий раз — быстрее прокачивайся и разбивайся до прихода мента.</div>
+  </div>
+  <button class="crash-btn" style="background:#ffcc00;color:#000;" onclick="restartGame()">🔄 ЕЩЁРАЗ</button>
+</div>
+
+<!-- Полицейский алерт (красная полоска сверху) -->
+<div id="cop-alert" style="
+  position:fixed;top:0;left:0;width:100%;
+  background:linear-gradient(90deg,#cc0000,#ff0000,#cc0000);
+  display:none;align-items:center;justify-content:center;
+  padding:10px;z-index:50;pointer-events:none;
+  animation:copBlink 0.4s infinite alternate;">
+  <span style="font-size:22px;font-weight:bold;color:#fff;letter-spacing:2px;text-shadow:0 0 10px #000;">
+    👮 МУС!!! УХОДИ!!! 👮
+  </span>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 'use strict';
@@ -323,6 +356,7 @@ const CONFIG = {
 // ============================================================
 let scene, camera, renderer, clock;
 let gameState, scooterCtrl, cityGen, npcSystem, trickSystem, crashSystem, shopSystem, camSystem, audioSystem;
+let ambulance = null;
 let animFrameId = null;
 let gameStarted = false;
 
@@ -1216,11 +1250,353 @@ class CarSystem {
   }
 }
 
+// ============================================================
+// COP
+// ============================================================
+class Cop {
+  constructor() {
+    this.state     = 'IDLE';   // IDLE | ALERT | CHASING | CAUGHT
+    this.alertTimer  = 0;
+    this.chaseTimer  = 0;
+    this.speed       = 0;
+    this.currentSpeed = 0;
+    this.mesh        = this._buildMesh();
+    // Спавн далеко от игрока
+    this.mesh.position.copy(cityGen.getRandRoadPoint());
+    scene.add(this.mesh);
+    this.mesh.visible = false; // появляется не сразу
+    // Когда появится — случайно через 20–60 сек
+    this.spawnDelay  = 1200 + Math.floor(Math.random() * 2400);
+    this.spawnTimer  = 0;
+    this.warningShown = false;
+  }
+
+  _buildMesh() {
+    const g = new THREE.Group();
+    // Тело — тёмно-синяя форма
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.13, 0.11, 0.62, 8),
+      new THREE.MeshLambertMaterial({ color: 0x1a1a5e })
+    );
+    body.position.y = 0.7;
+    // Голова
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.15, 8, 6),
+      new THREE.MeshLambertMaterial({ color: 0xffccaa })
+    );
+    head.position.y = 1.42;
+    // Фуражка (плоский цилиндр + козырёк)
+    const capTop = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.18, 0.1, 12),
+      new THREE.MeshLambertMaterial({ color: 0x111155 })
+    );
+    capTop.position.y = 1.62;
+    const capBrim = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.24, 0.24, 0.03, 12),
+      new THREE.MeshLambertMaterial({ color: 0x111155 })
+    );
+    capBrim.position.y = 1.56;
+    // Кокарда — жёлтая точка
+    const badge = new THREE.Mesh(
+      new THREE.SphereGeometry(0.04, 6, 4),
+      new THREE.MeshLambertMaterial({ color: 0xffdd00, emissive: 0xffaa00, emissiveIntensity: 0.6 })
+    );
+    badge.position.set(0, 1.62, 0.19);
+    // Свисток-мигалка над фуражкой (мигает при погоне)
+    this.siren = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 6, 4),
+      new THREE.MeshLambertMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1 })
+    );
+    this.siren.position.set(0, 1.75, 0);
+    this.siren.visible = false;
+
+    g.add(body, head, capTop, capBrim, badge, this.siren);
+    return g;
+  }
+
+  update(delta, scPos, scSpeed) {
+    if (GS.mode !== 'RIDING') return;
+
+    // Таймер до появления
+    if (!this.mesh.visible) {
+      this.spawnTimer++;
+      if (this.spawnTimer >= this.spawnDelay) {
+        // Спавн за спиной игрока на расстоянии ~35м
+        const angle = GS.scooter.heading + Math.PI + (Math.random() - 0.5) * 0.8;
+        this.mesh.position.set(
+          scPos.x + Math.sin(angle) * 35,
+          0,
+          scPos.z + Math.cos(angle) * 35
+        );
+        this.mesh.visible = true;
+        this.state = 'ALERT';
+        this.alertTimer = 180; // 3 сек предупреждение
+        this.speed = 4.5 + Math.random() * 3; // 16–27 км/ч
+        if (!this.warningShown) {
+          this.warningShown = true;
+          hudShowFlash('👮 МУС!!! УХОДИ!!!', '#ff0000');
+          this._showCopAlert(true);
+        }
+      }
+      return;
+    }
+
+    const dist = this.mesh.position.distanceTo(scPos);
+
+    if (this.state === 'ALERT') {
+      this.alertTimer--;
+      this.siren.visible = Math.floor(Date.now() / 200) % 2 === 0;
+      if (this.alertTimer <= 0) this.state = 'CHASING';
+    }
+
+    if (this.state === 'CHASING') {
+      this.chaseTimer++;
+      this.siren.visible = Math.floor(Date.now() / 150) % 2 === 0;
+      // Сирена мигает: красный/синий
+      this.siren.material.color.setHex(Math.floor(Date.now() / 150) % 2 === 0 ? 0xff0000 : 0x0000ff);
+      this.siren.material.emissive.setHex(this.siren.material.color.getHex());
+
+      // Инерция — разгоняется
+      this.currentSpeed = Math.min(this.speed, this.currentSpeed + this.speed * 2 * delta);
+
+      // Движение к игроку
+      const dir = new THREE.Vector3().subVectors(scPos, this.mesh.position).setY(0);
+      if (dir.length() > 0.1) {
+        dir.normalize();
+        this.mesh.position.addScaledVector(dir, this.currentSpeed * delta);
+        this.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+      }
+
+      // Поймал!
+      if (dist < 2.0) {
+        this.state = 'CAUGHT';
+        this._onCaught(scPos);
+      }
+
+      // Потерял из виду — отступает (уехал далеко)
+      if (dist > 80) {
+        this.state = 'IDLE';
+        this.mesh.visible = false;
+        this.siren.visible = false;
+        this.spawnTimer = 0;
+        this.spawnDelay = 900 + Math.floor(Math.random() * 1800); // вернётся быстрее
+        this._showCopAlert(false);
+        hudShowFlash('💨 Ушёл от мента!', '#00ff88');
+      }
+    }
+  }
+
+  _onCaught(scPos) {
+    this.siren.visible = false;
+    this._showCopAlert(false);
+    GS.mode = 'CAUGHT';
+    // Показываем экран "поймали"
+    setTimeout(() => showCaughtScreen(), 600);
+  }
+
+  _showCopAlert(show) {
+    const el = document.getElementById('cop-alert');
+    if (el) el.style.display = show ? 'flex' : 'none';
+  }
+}
+
+// ============================================================
+// AMBULANCE (появляется после краша)
+// ============================================================
+class Ambulance {
+  constructor() {
+    this.mesh     = null;
+    this.vel      = new THREE.Vector3();
+    this.active   = false;
+    this.exploded = false;
+    this.debrisParts = [];
+    this.sirenL   = null;
+    this.sirenR   = null;
+  }
+
+  spawn(targetPos) {
+    if (this.active) return;
+    this.active   = true;
+    this.exploded = false;
+    this.target   = targetPos.clone();
+
+    // Появляется с края карты со случайной стороны
+    const lim   = CONFIG.city.gridSize * CONFIG.city.blockSize / 2 - 2;
+    const side  = Math.floor(Math.random() * 4);
+    const start = new THREE.Vector3();
+    let heading = 0;
+    if (side === 0) { start.set( lim, 0, targetPos.z); heading = Math.PI / 2 + Math.PI; }
+    if (side === 1) { start.set(-lim, 0, targetPos.z); heading = Math.PI / 2; }
+    if (side === 2) { start.set(targetPos.x, 0,  lim); heading = Math.PI; }
+    if (side === 3) { start.set(targetPos.x, 0, -lim); heading = 0; }
+
+    this.mesh = this._buildMesh();
+    this.mesh.position.copy(start);
+    this.mesh.rotation.y = heading;
+    scene.add(this.mesh);
+
+    // Вектор к цели
+    const dir = new THREE.Vector3().subVectors(targetPos, start).setY(0).normalize();
+    this.vel  = dir.multiplyScalar(28); // ~100 км/ч — летит как сумасшедшая
+  }
+
+  _buildMesh() {
+    const g = new THREE.Group();
+    const white  = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const yellow = new THREE.MeshLambertMaterial({ color: 0xffdd00 });
+    const dark   = new THREE.MeshLambertMaterial({ color: 0x111111 });
+    const glass  = new THREE.MeshLambertMaterial({ color: 0x88bbdd, transparent: true, opacity: 0.6 });
+    const red    = new THREE.MeshLambertMaterial({ color: 0xff2200 });
+
+    // Кузов — высокий фургон
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.0, 4.4), white);
+    body.position.y = 0.65;
+    // Верхняя надстройка
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.75, 3.2), white);
+    top.position.y = 1.52;
+    // Жёлтая полоса
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.22, 4.42),
+      new THREE.MeshLambertMaterial({ color: 0xffcc00 }));
+    stripe.position.y = 0.65;
+    // Крест (красный)
+    const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.18), red);
+    const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.6), red);
+    crossH.position.set(0, 1.55, -0.5); crossV.position.set(0, 1.55, -0.5);
+    // Колёса
+    const wgeo = new THREE.CylinderGeometry(0.34, 0.34, 0.24, 12);
+    this.ambWheels = [];
+    for (const [x, y, z] of [[-1.05,0.34,-1.3],[1.05,0.34,-1.3],[-1.05,0.34,1.3],[1.05,0.34,1.3]]) {
+      const w = new THREE.Mesh(wgeo.clone(), dark);
+      w.rotation.z = Math.PI / 2; w.position.set(x, y, z);
+      g.add(w); this.ambWheels.push(w);
+    }
+    // Мигалки (два синих блока на крыше)
+    const sirenGeo = new THREE.BoxGeometry(0.28, 0.18, 0.28);
+    this.sirenL = new THREE.Mesh(sirenGeo, new THREE.MeshLambertMaterial({ color: 0x0044ff, emissive: 0x0022ff, emissiveIntensity: 1 }));
+    this.sirenR = new THREE.Mesh(sirenGeo.clone(), new THREE.MeshLambertMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1 }));
+    this.sirenL.position.set(-0.5, 1.98, 0.4);
+    this.sirenR.position.set( 0.5, 1.98, 0.4);
+    // Фары
+    const hlMat = new THREE.MeshLambertMaterial({ color: 0xffffcc, emissive: 0xffff88, emissiveIntensity: 0.8 });
+    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.18, 0.06), hlMat);
+    hl.position.set(0.6, 0.8, 2.23);
+    const hr = hl.clone(); hr.position.set(-0.6, 0.8, 2.23);
+
+    g.add(body, top, stripe, crossH, crossV, hl, hr, this.sirenL, this.sirenR);
+    return g;
+  }
+
+  update(delta) {
+    if (!this.active || this.exploded) return;
+    if (!this.mesh) return;
+
+    // Мигалки
+    const t = Math.floor(Date.now() / 120) % 2;
+    if (this.sirenL) this.sirenL.material.emissiveIntensity = t ? 1.2 : 0.1;
+    if (this.sirenR) this.sirenR.material.emissiveIntensity = t ? 0.1 : 1.2;
+
+    // Движение
+    this.mesh.position.addScaledVector(this.vel, delta);
+    for (const w of (this.ambWheels || [])) w.rotation.x += this.vel.length() * delta * 0.5;
+
+    // Проверка столкновения с обломками / целью
+    const dist = this.mesh.position.distanceTo(this.target);
+    if (dist < 4) {
+      this._explode();
+    }
+
+    // Выехал за карту без взрыва — убираем
+    const lim = CONFIG.city.gridSize * CONFIG.city.blockSize / 2 + 10;
+    const p = this.mesh.position;
+    if (Math.abs(p.x) > lim || Math.abs(p.z) > lim) {
+      this.active = false;
+      scene.remove(this.mesh);
+    }
+  }
+
+  _explode() {
+    if (this.exploded) return;
+    this.exploded = true;
+    const pos = this.mesh.position.clone();
+    scene.remove(this.mesh);
+
+    screenShake(30, 0.5);
+    audioSystem.crash(35);
+
+    // Огненные шары — оранжевые/красные сферы разлетаются
+    const fireMats = [
+      new THREE.MeshLambertMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 1 }),
+      new THREE.MeshLambertMaterial({ color: 0xff8800, emissive: 0xff6600, emissiveIntensity: 1 }),
+      new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 1 }),
+    ];
+    for (let i = 0; i < 22; i++) {
+      const r    = 0.15 + Math.random() * 0.55;
+      const part = new THREE.Mesh(
+        new THREE.SphereGeometry(r, 6, 5),
+        fireMats[i % fireMats.length]
+      );
+      part.position.copy(pos);
+      part.position.y += 0.5;
+      part.userData.vel = new THREE.Vector3(
+        (Math.random() - 0.5) * 18,
+        Math.random() * 14 + 4,
+        (Math.random() - 0.5) * 18
+      );
+      part.userData.angVel = new THREE.Vector3(
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10
+      );
+      part.userData.life = 120 + Math.floor(Math.random() * 80);
+      scene.add(part);
+      this.debrisParts.push(part);
+    }
+
+    hudShowFlash('💥 СКОРАЯ ПРИЕХАЛА!', '#ff4400');
+  }
+
+  updateDebris(delta) {
+    for (let i = this.debrisParts.length - 1; i >= 0; i--) {
+      const p = this.debrisParts[i];
+      p.userData.life--;
+      // Затухание
+      const lifeFrac = p.userData.life / 200;
+      p.material.emissiveIntensity = lifeFrac * 1.2;
+      p.scale.setScalar(0.3 + lifeFrac * 0.7);
+
+      const v  = p.userData.vel;
+      const av = p.userData.angVel;
+      v.y += CONFIG.physics.gravity * delta;
+      p.position.addScaledVector(v, delta);
+      p.rotation.x += av.x * delta;
+      p.rotation.y += av.y * delta;
+      p.rotation.z += av.z * delta;
+      av.multiplyScalar(0.95);
+      if (p.position.y < 0.1) { p.position.y = 0.1; v.y = Math.abs(v.y) * 0.2; v.x *= 0.8; v.z *= 0.8; }
+
+      if (p.userData.life <= 0) {
+        scene.remove(p);
+        this.debrisParts.splice(i, 1);
+      }
+    }
+  }
+
+  reset() {
+    if (this.mesh) scene.remove(this.mesh);
+    for (const p of this.debrisParts) scene.remove(p);
+    this.debrisParts = [];
+    this.active   = false;
+    this.exploded = false;
+    this.mesh     = null;
+  }
+}
+
 class NPCSystem {
   constructor() {
     this.peds     = [];
     this.couriers = [];
     this.carSystem = new CarSystem();
+    this.cop = new Cop();
     this._spawn();
   }
 
@@ -1232,7 +1608,6 @@ class NPCSystem {
       base.z += (Math.random() - 0.5) * 3;
       this.peds.push(new Pedestrian(base));
     }
-    // Спавним по одному курьеру каждого грейда
     for (let i = 0; i < COURIER_GRADES.length; i++) {
       this.couriers.push(new Courier(i));
     }
@@ -1244,6 +1619,7 @@ class NPCSystem {
     const cars = this.carSystem.cars;
     for (const p of this.peds)     p.update(delta, sc.pos, sc.speed);
     for (const c of this.couriers) c.update(delta, sc.pos, sc.speed, cars);
+    this.cop.update(delta, sc.pos, sc.speed);
   }
 }
 
@@ -1438,8 +1814,24 @@ class CrashSystem {
     if (this.phase === 'SETTLE') {
       const still = allParts.every(p => !p.userData.vel || p.userData.vel.length() < 0.06);
       if (still || this.timer > 420) {
+        this.phase = 'AMBULANCE';
+        this.timer = 0;
+        // Спавним скорую через 1.5 сек после того как всё осело
+        setTimeout(() => {
+          if (ambulance) ambulance.spawn(GS.scooter.pos);
+        }, 1500);
+      }
+    }
+    if (this.phase === 'AMBULANCE') {
+      if (ambulance) {
+        ambulance.update(rawDelta || delta);
+        ambulance.updateDebris(rawDelta || delta);
+      }
+      this.timer++;
+      // Финальный экран — через 7 сек после фазы AMBULANCE
+      if (this.timer > 420) {
         this.phase = 'DONE';
-        setTimeout(() => showCrashScreen(), 900);
+        setTimeout(() => showCrashScreen(), 400);
       }
     }
   }
@@ -1852,6 +2244,8 @@ function initGame() {
   crashSystem = new CrashSystem();
   shopSystem  = new ShopSystem();
   camSystem   = new CameraSystem();
+  if (ambulance) ambulance.reset();
+  ambulance  = new Ambulance();
 
   scooterCtrl.boostFrames = getStats().boostMax;
   GS.scooter.boostLeft = getStats().boostMax;
@@ -1874,9 +2268,26 @@ function startGame() {
   gameLoop();
 }
 
+function showCaughtScreen() {
+  const reasons = [
+    'Самокат конфискован. Страховка не поможет.',
+    'Протокол составлен. Имя уже в базе.',
+    '"Документики, пожалуйста." — больше некуда бежать.',
+    'Оштрафован. Разбиться было дешевле.',
+    'Мент в фуражке: "Ну и куда спешим?"',
+  ];
+  document.getElementById('caught-reason').textContent =
+    reasons[Math.floor(Math.random() * reasons.length)];
+  document.getElementById('caught-score').textContent = Math.round(GS.score);
+  document.getElementById('cop-alert').style.display = 'none';
+  document.getElementById('caught-screen').style.display = 'flex';
+}
+
 function restartGame() {
-  document.getElementById('crash-screen').style.display = 'none';
-  document.getElementById('shop-overlay').style.display = 'none';
+  document.getElementById('crash-screen').style.display  = 'none';
+  document.getElementById('caught-screen').style.display = 'none';
+  document.getElementById('cop-alert').style.display     = 'none';
+  document.getElementById('shop-overlay').style.display  = 'none';
   initGame();
   if (!animFrameId) gameLoop();
 }
