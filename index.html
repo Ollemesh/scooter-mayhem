@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SCOOTER MAYHEM 🛴💥</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -207,6 +207,68 @@
     from { opacity: 1; }
     to   { opacity: 0.6; }
   }
+
+  /* ===================== MOBILE CONTROLS ===================== */
+  #mobile-controls {
+    display: none;
+    position: fixed; bottom: 0; left: 0; width: 100%; height: 220px;
+    pointer-events: none; z-index: 20;
+  }
+  /* Показываем только на тач-устройствах */
+  @media (hover: none) and (pointer: coarse) {
+    #mobile-controls { display: block; }
+    #controls-hint   { display: none; }
+    /* Поджимаем HUD под мобиль */
+    #speedometer  { bottom: 230px; right: 16px; padding: 8px 14px; }
+    #speed-value  { font-size: 32px; }
+    #score-bar    { top: 12px; left: 12px; font-size: 15px; }
+    #boost-container     { bottom: 230px; left: 16px; width: 150px; }
+    #integrity-container { bottom: 276px; left: 16px; width: 150px; }
+    #trick-banner { font-size: 26px; top: 42%; }
+  }
+  /* Зона стика */
+  #joystick-zone {
+    position: absolute; bottom: 20px; left: 20px;
+    width: 140px; height: 140px;
+    pointer-events: all;
+  }
+  #joystick-base {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 2px solid rgba(255,255,255,0.25);
+  }
+  #joystick-knob {
+    position: absolute;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: rgba(0,255,204,0.55);
+    border: 2px solid rgba(0,255,204,0.9);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    transition: background 0.1s;
+    box-shadow: 0 0 12px rgba(0,255,204,0.4);
+  }
+  /* Кнопки справа */
+  #action-buttons {
+    position: absolute; bottom: 20px; right: 20px;
+    display: flex; flex-direction: column; gap: 12px; align-items: flex-end;
+    pointer-events: all;
+  }
+  .mob-btn {
+    width: 72px; height: 72px; border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.3);
+    font-size: 13px; font-weight: bold; color: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; user-select: none; -webkit-user-select: none;
+    line-height: 1.2; text-align: center;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.08s, opacity 0.08s;
+  }
+  .mob-btn:active, .mob-btn.pressed { transform: scale(0.88); opacity: 0.75; }
+  #btn-boost  { background: rgba(255, 100,  0, 0.7); border-color: #ff6600; font-size: 22px; }
+  #btn-trick  { background: rgba(130,  0, 255, 0.7); border-color: #aa44ff; font-size: 20px; }
+  #btn-shop-m { background: rgba(255,204,  0, 0.7); border-color: #ffcc00; color: #000; font-size: 18px; width: 58px; height: 58px; }
 </style>
 </head>
 <body>
@@ -304,7 +366,21 @@
   </span>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<div id="mobile-controls">
+  <!-- Виртуальный джойстик -->
+  <div id="joystick-zone">
+    <div id="joystick-base"></div>
+    <div id="joystick-knob"></div>
+  </div>
+  <!-- Кнопки действий -->
+  <div id="action-buttons">
+    <div id="btn-boost"  class="mob-btn">⚡<br><span style="font-size:11px">БУСТ</span></div>
+    <div id="btn-trick"  class="mob-btn">🛹<br><span style="font-size:11px">ТРЮК</span></div>
+    <div id="btn-shop-m" class="mob-btn">🔧<br><span style="font-size:10px">ШОП</span></div>
+  </div>
+</div>
+
+
 <script>
 'use strict';
 
@@ -2309,6 +2385,140 @@ function gameLoop() {
   updateHUD();
   renderer.render(scene, camera);
 }
+
+// ============================================================
+// VIRTUAL JOYSTICK & MOBILE BUTTONS
+// ============================================================
+(function initMobileControls() {
+  const zone  = document.getElementById('joystick-zone');
+  const knob  = document.getElementById('joystick-knob');
+  if (!zone || !knob) return;
+
+  const RADIUS = 42; // макс отклонение рукоятки (px)
+  let activeTouchId = null;
+  let originX = 0, originY = 0;
+  let joyX = 0, joyY = 0; // -1..1
+
+  function applyJoy() {
+    // joyX: -1=лево, +1=право   joyY: -1=вперёд, +1=назад
+    if (!scooterCtrl) return;
+    const k = scooterCtrl.keys;
+    const threshold = 0.25;
+    k['_joyFwd']  = joyY < -threshold;
+    k['_joyBack'] = joyY >  threshold;
+    k['_joyLeft'] = joyX < -threshold;
+    k['_joyRight']= joyX >  threshold;
+    // Аналоговое усиление поворота через доп. поле
+    scooterCtrl._joyX = joyX;
+    scooterCtrl._joyY = joyY;
+  }
+
+  zone.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (activeTouchId !== null) return;
+    const t = e.changedTouches[0];
+    activeTouchId = t.identifier;
+    const r = zone.getBoundingClientRect();
+    originX = r.left + r.width  / 2;
+    originY = r.top  + r.height / 2;
+    updateKnob(t.clientX, t.clientY);
+  }, { passive: false });
+
+  zone.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === activeTouchId) {
+        updateKnob(t.clientX, t.clientY);
+        break;
+      }
+    }
+  }, { passive: false });
+
+  zone.addEventListener('touchend', e => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === activeTouchId) {
+        activeTouchId = null;
+        joyX = 0; joyY = 0;
+        knob.style.transform = 'translate(-50%, -50%)';
+        applyJoy();
+        break;
+      }
+    }
+  }, { passive: false });
+
+  function updateKnob(cx, cy) {
+    let dx = cx - originX;
+    let dy = cy - originY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > RADIUS) { dx *= RADIUS / dist; dy *= RADIUS / dist; }
+    joyX = dx / RADIUS;
+    joyY = dy / RADIUS;
+    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    applyJoy();
+  }
+
+  // Патчим update ScooterController чтобы читал джойстик
+  const origSetupInput = ScooterController.prototype._setupInput;
+  ScooterController.prototype._setupInput = function() {
+    origSetupInput.call(this);
+  };
+
+  // Патчим чтение keys в update — добавляем джой-оси
+  const origUpdate = ScooterController.prototype.update;
+  ScooterController.prototype.update = function(delta) {
+    // Инжектим виртуальные клавиши из джойстика
+    if (this._joyX !== undefined) {
+      const k = this.keys;
+      if (k['_joyFwd'])   k['KeyW'] = true;  else delete k['KeyW'];
+      if (k['_joyBack'])  k['KeyS'] = true;  else delete k['KeyS'];
+      if (k['_joyLeft'])  k['KeyA'] = true;  else delete k['KeyA'];
+      if (k['_joyRight']) k['KeyD'] = true;  else delete k['KeyD'];
+    }
+    origUpdate.call(this, delta);
+  };
+
+  // Кнопки действий
+  function holdBtn(id, keyCode) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const press = (e) => {
+      e.preventDefault();
+      if (scooterCtrl) scooterCtrl.keys[keyCode] = true;
+      el.classList.add('pressed');
+    };
+    const release = (e) => {
+      e.preventDefault();
+      if (scooterCtrl) delete scooterCtrl.keys[keyCode];
+      el.classList.remove('pressed');
+    };
+    el.addEventListener('touchstart',  press,   { passive: false });
+    el.addEventListener('touchend',    release, { passive: false });
+    el.addEventListener('touchcancel', release, { passive: false });
+  }
+
+  holdBtn('btn-boost', 'Space');
+  holdBtn('btn-trick', 'ShiftLeft');
+
+  // Кнопка магазина — одиночный тап
+  const shopBtn = document.getElementById('btn-shop-m');
+  if (shopBtn) {
+    shopBtn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      shopBtn.classList.add('pressed');
+    }, { passive: false });
+    shopBtn.addEventListener('touchend', e => {
+      e.preventDefault();
+      shopBtn.classList.remove('pressed');
+      if (GS.mode === 'RIDING') openShop();
+      else if (GS.mode === 'SHOP') closeShop();
+    }, { passive: false });
+  }
+
+  // Предотвращаем зум двойным тапом и скролл по всему экрану
+  document.addEventListener('touchmove', e => {
+    if (e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
+})();
 </script>
 </body>
 </html>
