@@ -5,2521 +5,1592 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SCOOTER MAYHEM 🛴💥</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
-  #canvas { display: block; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#111; overflow:hidden; font-family:'Courier New',monospace; touch-action:none; }
+#canvas { display:block; image-rendering:pixelated; }
 
-  /* HUD */
-  #hud {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    pointer-events: none; z-index: 10;
-  }
-  #speedometer {
-    position: absolute; bottom: 30px; right: 30px;
-    background: rgba(0,0,0,0.7); border: 2px solid #00ffcc;
-    border-radius: 12px; padding: 12px 20px; text-align: center;
-    color: #00ffcc; min-width: 100px;
-  }
-  #speed-value { font-size: 42px; font-weight: bold; display: block; }
-  .unit { font-size: 14px; opacity: 0.7; }
-  #score-bar {
-    position: absolute; top: 20px; left: 20px;
-    background: rgba(0,0,0,0.7); border: 2px solid #ffcc00;
-    border-radius: 12px; padding: 10px 16px; color: #ffcc00;
-  }
-  #score-bar div { font-size: 18px; margin: 2px 0; }
-  #boost-container {
-    position: absolute; bottom: 30px; left: 30px;
-    background: rgba(0,0,0,0.7); border: 2px solid #ff6600;
-    border-radius: 8px; padding: 8px 12px; width: 180px;
-  }
-  .bar-label { color: #ff6600; font-size: 11px; margin-bottom: 4px; }
-  .bar-track { background: #333; border-radius: 4px; height: 10px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.1s; }
-  #boost-fill { background: linear-gradient(90deg, #ff4400, #ffcc00); }
-  #integrity-container {
-    position: absolute; bottom: 80px; left: 30px;
-    background: rgba(0,0,0,0.7); border: 2px solid #ff3333;
-    border-radius: 8px; padding: 8px 12px; width: 180px;
-  }
-  #integrity-fill { background: linear-gradient(90deg, #ff0000, #00ff44); }
+#hud {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  pointer-events:none; z-index:10;
+}
+#speedometer {
+  position:absolute; bottom:30px; right:20px;
+  background:rgba(0,0,0,0.75); border:2px solid #00ffcc;
+  border-radius:10px; padding:10px 18px; text-align:center;
+  color:#00ffcc; min-width:90px;
+}
+#speed-value { font-size:38px; font-weight:bold; display:block; line-height:1; }
+.unit { font-size:12px; opacity:0.7; }
+#score-bar {
+  position:absolute; top:16px; left:16px;
+  background:rgba(0,0,0,0.75); border:2px solid #ffcc00;
+  border-radius:10px; padding:8px 14px; color:#ffcc00;
+}
+#score-bar div { font-size:16px; margin:2px 0; }
+#boost-container {
+  position:absolute; bottom:30px; left:16px;
+  background:rgba(0,0,0,0.75); border:2px solid #ff6600;
+  border-radius:8px; padding:6px 10px; width:160px;
+}
+.bar-label { color:#ff6600; font-size:10px; margin-bottom:3px; }
+.bar-track { background:#333; border-radius:3px; height:8px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:3px; transition:width 0.1s; }
+#boost-fill { background:linear-gradient(90deg,#ff4400,#ffcc00); }
+#integrity-container {
+  position:absolute; bottom:72px; left:16px;
+  background:rgba(0,0,0,0.75); border:2px solid #ff3333;
+  border-radius:8px; padding:6px 10px; width:160px;
+}
+#integrity-fill { background:linear-gradient(90deg,#ff0000,#00ff44); }
 
-  #trick-banner {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    font-size: 36px; font-weight: bold; color: #fff;
-    text-shadow: 0 0 20px #ff6600, 2px 2px 0 #000;
-    pointer-events: none; opacity: 0;
-    transition: opacity 0.3s;
-    text-align: center;
-  }
-  #popup-container {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    pointer-events: none;
-  }
-  .popup {
-    position: absolute; font-size: 22px; font-weight: bold;
-    color: #ffff00; text-shadow: 1px 1px 0 #000, 0 0 10px #ff6600;
-    pointer-events: none; animation: popFloat 1.5s ease-out forwards;
-  }
-  @keyframes popFloat {
-    0%   { opacity: 1; transform: translateY(0) scale(1); }
-    50%  { opacity: 1; transform: translateY(-40px) scale(1.2); }
-    100% { opacity: 0; transform: translateY(-90px) scale(0.8); }
-  }
-  #controls-hint {
-    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
-    color: rgba(255,255,255,0.45); font-size: 12px; letter-spacing: 1px;
-  }
-  #combo-display {
-    position: absolute; top: 20px; right: 20px;
-    background: rgba(0,0,0,0.7); border: 2px solid #ff00ff;
-    border-radius: 10px; padding: 8px 14px; color: #ff00ff;
-    font-size: 14px; display: none;
-  }
+#trick-banner {
+  position:absolute; top:42%; left:50%; transform:translate(-50%,-50%);
+  font-size:30px; font-weight:bold; color:#fff;
+  text-shadow:0 0 16px #ff6600, 2px 2px 0 #000;
+  text-align:center; pointer-events:none;
+  transition:opacity 0.3s;
+}
 
-  /* Race banner */
-  #race-banner {
-    position: absolute; top: 100px; left: 50%; transform: translateX(-50%);
-    background: rgba(0,0,0,0.85); border: 3px solid #ffcc00;
-    border-radius: 12px; padding: 12px 28px;
-    color: #ffcc00; font-size: 24px; font-weight: bold;
-    text-align: center; display: none;
-  }
+#overlay {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.88); z-index:100;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  color:#fff; text-align:center;
+}
+#overlay h1 { font-size:clamp(28px,6vw,52px); color:#ffcc00; text-shadow:0 0 20px #ff6600; margin-bottom:8px; }
+#overlay .subtitle { font-size:clamp(12px,2.5vw,18px); color:#aaa; margin-bottom:28px; max-width:520px; line-height:1.5; }
+.big-btn {
+  background:#ffcc00; color:#111; border:none;
+  font-size:clamp(16px,3vw,22px); font-family:'Courier New',monospace;
+  font-weight:bold; padding:14px 40px; border-radius:8px;
+  cursor:pointer; margin:6px; pointer-events:all;
+  transition:transform 0.1s, background 0.1s;
+}
+.big-btn:hover { background:#fff; transform:scale(1.04); }
+.big-btn.red { background:#ff3333; color:#fff; }
 
-  /* Shop Overlay */
-  #shop-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.92); z-index: 100;
-    display: none; flex-direction: column; align-items: center; justify-content: center;
-    color: #fff;
-  }
-  #shop-overlay h2 {
-    font-size: 36px; margin-bottom: 8px; color: #ffcc00;
-    text-shadow: 0 0 20px #ffcc00;
-  }
-  #shop-points-display {
-    font-size: 22px; color: #ffcc00; margin-bottom: 24px;
-  }
-  #shop-items { width: 620px; max-width: 96vw; }
-  .shop-item {
-    display: flex; align-items: center; gap: 14px;
-    background: rgba(255,255,255,0.06); border: 1px solid #444;
-    border-radius: 10px; padding: 12px 16px; margin-bottom: 10px;
-    pointer-events: all;
-  }
-  .shop-icon { font-size: 30px; min-width: 40px; text-align: center; }
-  .shop-info { flex: 1; }
-  .shop-name { font-size: 16px; font-weight: bold; color: #fff; }
-  .shop-desc { font-size: 12px; color: #aaa; margin: 2px 0 4px; }
-  .shop-bar { font-size: 13px; color: #00ffcc; letter-spacing: 2px; }
-  .shop-btn {
-    background: #ffcc00; color: #000; border: none; border-radius: 8px;
-    padding: 8px 16px; font-size: 14px; font-weight: bold;
-    cursor: pointer; min-width: 80px;
-    font-family: 'Courier New', monospace;
-  }
-  .shop-btn:hover { background: #ffe44d; }
-  .shop-btn.maxed { background: #444; color: #888; cursor: default; }
-  #close-shop {
-    margin-top: 20px; background: transparent; border: 2px solid #fff;
-    color: #fff; padding: 10px 30px; border-radius: 10px;
-    font-size: 16px; cursor: pointer; pointer-events: all;
-    font-family: 'Courier New', monospace;
-  }
-  #close-shop:hover { background: rgba(255,255,255,0.1); }
+#shop-overlay {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.92); z-index:200;
+  display:none; flex-direction:column; align-items:center; justify-content:center;
+  color:#fff;
+}
+#shop-overlay h2 { color:#ffcc00; font-size:26px; margin-bottom:16px; }
+#shop-grid { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; max-width:700px; }
+.shop-item {
+  background:#1a1a1a; border:2px solid #444; border-radius:8px;
+  padding:12px 16px; width:180px; cursor:pointer; pointer-events:all;
+  transition:border-color 0.15s;
+}
+.shop-item:hover { border-color:#ffcc00; }
+.shop-item .si-name { font-size:13px; color:#ffcc00; margin-bottom:4px; }
+.shop-item .si-level { font-size:11px; color:#888; margin-bottom:6px; }
+.shop-item .si-cost { font-size:14px; color:#00ffcc; font-weight:bold; }
+.shop-item .si-bars { display:flex; gap:3px; margin-top:6px; }
+.shop-item .si-bar { height:6px; flex:1; border-radius:2px; background:#333; }
+.shop-item .si-bar.filled { background:#ffcc00; }
+#shop-coins { color:#ffcc00; font-size:18px; margin-bottom:12px; }
+#shop-close { margin-top:14px; }
 
-  /* Crash / Score Screen */
-  #crash-screen {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.9); z-index: 200;
-    display: none; flex-direction: column; align-items: center; justify-content: center;
-    color: #fff; text-align: center;
-  }
-  #crash-screen h1 {
-    font-size: 52px; color: #ff2200;
-    text-shadow: 0 0 30px #ff2200, 0 0 60px #ff0000;
-    margin-bottom: 10px; animation: glitch 0.3s infinite;
-  }
-  @keyframes glitch {
-    0%,100% { transform: translate(0,0) skew(0deg); }
-    25% { transform: translate(-2px,1px) skew(1deg); }
-    75% { transform: translate(2px,-1px) skew(-1deg); }
-  }
-  #crash-subtitle {
-    font-size: 18px; color: #ffaa00; margin-bottom: 30px;
-  }
-  #damage-report {
-    background: rgba(255,255,255,0.06); border: 2px solid #ff2200;
-    border-radius: 14px; padding: 24px 40px; min-width: 420px;
-    max-width: 90vw;
-  }
-  .report-line {
-    display: flex; justify-content: space-between; align-items: center;
-    font-size: 17px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1);
-  }
-  .report-line:last-child { border: none; }
-  .report-val { color: #00ffcc; font-weight: bold; font-size: 20px; }
-  #total-score-line {
-    margin-top: 14px; padding-top: 14px; border-top: 2px solid #ffcc00 !important;
-    font-size: 22px !important;
-  }
-  #total-score-line .report-val { color: #ffcc00 !important; font-size: 28px !important; }
-  #crash-btns { margin-top: 28px; display: flex; gap: 16px; }
-  .crash-btn {
-    padding: 12px 32px; border-radius: 10px; font-size: 18px;
-    cursor: pointer; font-weight: bold; border: none;
-    font-family: 'Courier New', monospace;
-  }
-  #btn-play-again { background: #ff2200; color: #fff; }
-  #btn-play-again:hover { background: #ff4422; }
+/* Mobile controls */
+#mobile-controls {
+  position:fixed; bottom:0; left:0; width:100%; height:220px;
+  pointer-events:none; z-index:50; display:none;
+}
+#joystick-zone {
+  position:absolute; bottom:20px; left:20px;
+  width:130px; height:130px; pointer-events:all;
+}
+#joystick-base {
+  position:absolute; top:0; left:0; width:130px; height:130px;
+  background:rgba(255,255,255,0.1); border:2px solid rgba(255,255,255,0.3);
+  border-radius:50%;
+}
+#joystick-knob {
+  position:absolute; top:50%; left:50%;
+  width:50px; height:50px; margin:-25px 0 0 -25px;
+  background:rgba(255,255,255,0.5); border-radius:50%;
+}
+#action-btns {
+  position:absolute; bottom:20px; right:16px;
+  display:flex; flex-direction:column; gap:8px; pointer-events:all;
+}
+.act-btn {
+  width:64px; height:64px; border-radius:50%;
+  border:2px solid rgba(255,255,255,0.4);
+  background:rgba(0,0,0,0.5); color:#fff;
+  font-size:13px; font-weight:bold; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+#btn-boost { border-color:#ff6600; color:#ff6600; }
+#btn-trick { border-color:#00ffcc; color:#00ffcc; }
+#btn-shop  { border-color:#ffcc00; color:#ffcc00; font-size:10px; }
 
-  /* Start screen */
-  #start-screen {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: linear-gradient(135deg, #0a0a1a 0%, #1a0a0a 100%);
-    z-index: 300; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; color: #fff;
-  }
-  #start-screen h1 {
-    font-size: 64px; color: #00ffcc;
-    text-shadow: 0 0 40px #00ffcc; margin-bottom: 8px;
-  }
-  #start-screen .subtitle {
-    font-size: 20px; color: #ffcc00; margin-bottom: 8px;
-  }
-  #start-screen .tagline {
-    font-size: 14px; color: #888; margin-bottom: 40px; max-width: 500px;
-    text-align: center; line-height: 1.8;
-  }
-  #start-screen .controls-list {
-    background: rgba(255,255,255,0.06); border: 1px solid #333;
-    border-radius: 10px; padding: 16px 28px; margin-bottom: 32px;
-    text-align: left; font-size: 14px; color: #ccc; line-height: 2;
-  }
-  #btn-start {
-    background: #00ffcc; color: #000; border: none; border-radius: 12px;
-    padding: 16px 60px; font-size: 24px; font-weight: bold;
-    cursor: pointer; font-family: 'Courier New', monospace;
-    box-shadow: 0 0 30px #00ffcc88;
-  }
-  #btn-start:hover { background: #44ffdd; transform: scale(1.05); }
-  @keyframes copBlink {
-    from { opacity: 1; }
-    to   { opacity: 0.6; }
-  }
-
-  /* ===================== MOBILE CONTROLS ===================== */
-  #mobile-controls {
-    display: none;
-    position: fixed; bottom: 0; left: 0; width: 100%; height: 220px;
-    pointer-events: none; z-index: 20;
-  }
-  /* Показываем только на тач-устройствах */
-  @media (hover: none) and (pointer: coarse) {
-    #mobile-controls { display: block; }
-    #controls-hint   { display: none; }
-    /* Поджимаем HUD под мобиль */
-    #speedometer  { bottom: 230px; right: 16px; padding: 8px 14px; }
-    #speed-value  { font-size: 32px; }
-    #score-bar    { top: 12px; left: 12px; font-size: 15px; }
-    #boost-container     { bottom: 230px; left: 16px; width: 150px; }
-    #integrity-container { bottom: 276px; left: 16px; width: 150px; }
-    #trick-banner { font-size: 26px; top: 42%; }
-  }
-  /* Зона стика */
-  #joystick-zone {
-    position: absolute; bottom: 20px; left: 20px;
-    width: 140px; height: 140px;
-    pointer-events: all;
-  }
-  #joystick-base {
-    position: absolute; inset: 0;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.08);
-    border: 2px solid rgba(255,255,255,0.25);
-  }
-  #joystick-knob {
-    position: absolute;
-    width: 56px; height: 56px;
-    border-radius: 50%;
-    background: rgba(0,255,204,0.55);
-    border: 2px solid rgba(0,255,204,0.9);
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    transition: background 0.1s;
-    box-shadow: 0 0 12px rgba(0,255,204,0.4);
-  }
-  /* Кнопки справа */
-  #action-buttons {
-    position: absolute; bottom: 20px; right: 20px;
-    display: flex; flex-direction: column; gap: 12px; align-items: flex-end;
-    pointer-events: all;
-  }
-  .mob-btn {
-    width: 72px; height: 72px; border-radius: 50%;
-    border: 3px solid rgba(255,255,255,0.3);
-    font-size: 13px; font-weight: bold; color: #fff;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    cursor: pointer; user-select: none; -webkit-user-select: none;
-    line-height: 1.2; text-align: center;
-    -webkit-tap-highlight-color: transparent;
-    transition: transform 0.08s, opacity 0.08s;
-  }
-  .mob-btn:active, .mob-btn.pressed { transform: scale(0.88); opacity: 0.75; }
-  #btn-boost  { background: rgba(255, 100,  0, 0.7); border-color: #ff6600; font-size: 22px; }
-  #btn-trick  { background: rgba(130,  0, 255, 0.7); border-color: #aa44ff; font-size: 20px; }
-  #btn-shop-m { background: rgba(255,204,  0, 0.7); border-color: #ffcc00; color: #000; font-size: 18px; width: 58px; height: 58px; }
+@media (hover:none) and (pointer:coarse) {
+  #mobile-controls { display:block; }
+  #speedometer { bottom:240px; }
+  #boost-container { bottom:240px; }
+  #integrity-container { bottom:282px; }
+}
 </style>
 </head>
 <body>
-
-<!-- Start Screen -->
-<div id="start-screen">
-  <h1>🛴 SCOOTER MAYHEM</h1>
-  <div class="subtitle">Прокатный электросамокат. Прокачай. Разбей. Победи.</div>
-  <div class="tagline">
-    Начинаешь на слабом самокате — медленно, безопасно, скучно.<br>
-    Пугай прохожих. Гоняй с курьерами. Делай трюки. Зарабатывай очки.<br>
-    Прокачай самокат до предела — и разбейся как можно сильнее! 💥
-  </div>
-  <div class="controls-list">
-    <b>Управление:</b><br>
-    W/↑ — газ &nbsp;&nbsp; S/↓ — тормоз &nbsp;&nbsp; A/← D/→ — рулить<br>
-    SPACE — буст &nbsp;&nbsp; SHIFT — трюк (вилли/спин в воздухе)<br>
-    TAB — магазин апгрейдов &nbsp;&nbsp; R — рестарт
-  </div>
-  <button id="btn-start" onclick="startGame()">ПОЕХАЛИ!</button>
-</div>
-
-<!-- Game Canvas -->
 <canvas id="canvas"></canvas>
 
-<!-- HUD -->
 <div id="hud">
   <div id="score-bar">
-    <div>🪙 <span id="points-display">0</span></div>
-    <div>⭐ <span id="score-display">0</span></div>
+    <div>💰 <span id="coins">0</span></div>
+    <div>🏆 <span id="score">0</span></div>
+    <div id="combo-display" style="display:none;color:#ff6600">🔥 x<span id="combo-mult">1</span></div>
   </div>
   <div id="speedometer">
     <span id="speed-value">0</span>
-    <span class="unit">км/ч</span>
+    <span class="unit">KM/H</span>
   </div>
   <div id="boost-container">
-    <div class="bar-label">⚡ БУСТ</div>
+    <div class="bar-label">⚡ BOOST</div>
     <div class="bar-track"><div class="bar-fill" id="boost-fill" style="width:100%"></div></div>
   </div>
   <div id="integrity-container">
-    <div class="bar-label">🔧 САМОКАТ HP</div>
+    <div class="bar-label">🔧 INTEGRITY</div>
     <div class="bar-track"><div class="bar-fill" id="integrity-fill" style="width:100%"></div></div>
   </div>
   <div id="trick-banner"></div>
-  <div id="popup-container"></div>
-  <div id="combo-display">💥 КОМБО ×<span id="combo-mult">1</span></div>
-  <div id="race-banner">🏁 ГОНКА! Оторвись от курьера!</div>
-  <div id="controls-hint">WASD / Стрелки: движение &nbsp;·&nbsp; SPACE: буст &nbsp;·&nbsp; SHIFT: трюк &nbsp;·&nbsp; TAB: магазин</div>
 </div>
 
-<!-- Shop Overlay -->
+<!-- Start screen -->
+<div id="overlay">
+  <h1>🛴 SCOOTER MAYHEM</h1>
+  <p class="subtitle">Гоняй по постсоветскому городу. Пугай прохожих. Устраивай гонки с курьерами. Разгонись до максимума — и красиво упади.<br><br>
+    <small style="color:#666">WASD / стрелки — движение &nbsp;|&nbsp; SPACE — буст &nbsp;|&nbsp; TAB — магазин &nbsp;|&nbsp; F — трюк</small>
+  </p>
+  <button class="big-btn" onclick="startGame()">🚀 ПОЕХАЛИ</button>
+</div>
+
+<!-- Shop -->
 <div id="shop-overlay">
-  <h2>🔧 МАСТЕРСКАЯ</h2>
-  <div id="shop-points-display">🪙 <span id="shop-pts">0</span></div>
-  <div id="shop-items"></div>
-  <button id="close-shop" onclick="closeShop()">🛴 НАЗАД К ЕЗДЕ [TAB]</button>
+  <h2>🛒 МАГАЗИН</h2>
+  <div id="shop-coins">💰 0</div>
+  <div id="shop-grid"></div>
+  <button class="big-btn" id="shop-close" onclick="closeShop()">✕ ЗАКРЫТЬ (TAB)</button>
 </div>
 
-<!-- Crash Screen -->
-<div id="crash-screen">
-  <h1>💥 КРАШ!</h1>
-  <div id="crash-subtitle">Ну и как тебя вообще выпускают на улицу?</div>
-  <div id="damage-report"></div>
-  <div id="crash-btns">
-    <button class="crash-btn" id="btn-play-again" onclick="restartGame()">🔄 ЕЩЁРАЗ</button>
-  </div>
-</div>
-
-<!-- Поймал мент -->
-<div id="caught-screen" style="
-  position:fixed;top:0;left:0;width:100%;height:100%;
-  background:rgba(0,0,0,0.92);z-index:200;
-  display:none;flex-direction:column;align-items:center;justify-content:center;
-  color:#fff;text-align:center;">
-  <div style="font-size:80px;margin-bottom:16px;">👮</div>
-  <h1 style="font-size:48px;color:#ffcc00;text-shadow:0 0 30px #ffaa00;margin-bottom:12px;">ПОЙМАЛИ!</h1>
-  <div style="font-size:20px;color:#aaa;margin-bottom:8px;">Не смог разбиться.</div>
-  <div id="caught-reason" style="font-size:16px;color:#888;margin-bottom:32px;">Самокат конфискован. Страховка не поможет.</div>
-  <div style="background:rgba(255,204,0,0.1);border:2px solid #ffcc00;border-radius:12px;padding:20px 40px;margin-bottom:28px;">
-    <div style="font-size:18px;color:#ffcc00;">⭐ Набрал очков: <span id="caught-score" style="font-size:26px;font-weight:bold;">0</span></div>
-    <div style="font-size:14px;color:#888;margin-top:6px;">В следующий раз — быстрее прокачивайся и разбивайся до прихода мента.</div>
-  </div>
-  <button class="crash-btn" style="background:#ffcc00;color:#000;" onclick="restartGame()">🔄 ЕЩЁРАЗ</button>
-</div>
-
-<!-- Полицейский алерт (красная полоска сверху) -->
-<div id="cop-alert" style="
-  position:fixed;top:0;left:0;width:100%;
-  background:linear-gradient(90deg,#cc0000,#ff0000,#cc0000);
-  display:none;align-items:center;justify-content:center;
-  padding:10px;z-index:50;pointer-events:none;
-  animation:copBlink 0.4s infinite alternate;">
-  <span style="font-size:22px;font-weight:bold;color:#fff;letter-spacing:2px;text-shadow:0 0 10px #000;">
-    👮 МУС!!! УХОДИ!!! 👮
-  </span>
-</div>
-
+<!-- Mobile -->
 <div id="mobile-controls">
-  <!-- Виртуальный джойстик -->
   <div id="joystick-zone">
     <div id="joystick-base"></div>
     <div id="joystick-knob"></div>
   </div>
-  <!-- Кнопки действий -->
-  <div id="action-buttons">
-    <div id="btn-boost"  class="mob-btn">⚡<br><span style="font-size:11px">БУСТ</span></div>
-    <div id="btn-trick"  class="mob-btn">🛹<br><span style="font-size:11px">ТРЮК</span></div>
-    <div id="btn-shop-m" class="mob-btn">🔧<br><span style="font-size:10px">ШОП</span></div>
+  <div id="action-btns">
+    <button class="act-btn" id="btn-boost">⚡<br>BOOST</button>
+    <button class="act-btn" id="btn-trick">🤸<br>TRICK</button>
+    <button class="act-btn" id="btn-shop">🛒<br>SHOP</button>
   </div>
 </div>
 
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 'use strict';
 
-// ============================================================
-// CONFIG
-// ============================================================
-const CONFIG = {
-  scooter: {
-    baseSpeed: 3.5,
-    maxTunedSpeed: 26,
-    baseAccel: 0.07,
-    baseTurn: 0.032,
-    baseBoostFrames: 50,
-    crashThreshold: 10,
-  },
-  city: {
-    blockSize: 44,
-    roadWidth: 12,
-    gridSize: 6,
-  },
-  npc: {
-    pedCount: 28,
-    courierCount: 3,
-    scareRadius: 5.5,
-    courierBaseSpeed: 3.2,
-  },
-  physics: {
-    gravity: -20,
-    groundFriction: 0.87,
-    airDrag: 0.995,
-    bounceDamp: 0.32,
-    debrisFriction: 0.72,
-    angDamp: 0.96,
-  },
-  scoring: {
-    scarePed: 10,
-    raceWin: 150,
-    wheeliePerFrame: 0.4,
-    jump: 25,
-    spin180: 50,
-    spin360: 120,
-    bigAir: 70,
-    crashPerForce: 5,
-  },
+// ─── CANVAS SETUP ────────────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let W, H, SCALE;
+function resize() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width  = W;
+  canvas.height = H;
+  SCALE = Math.min(W, H) / 520;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const C = {
+  TILE:       32,       // px per tile (world units)
+  GW:         22,       // grid width in blocks
+  GH:         22,       // grid height in blocks
+  ROAD:       3,        // road width in tiles
+  BLOCK:      8,        // building block size in tiles
+  // physics
+  FRICTION:   0.88,
+  TURN_SPEED: 0.055,
+  ACCEL:      0.18,
+  TOP_SPEED:  8.0,
+  BOOST_MULT: 1.65,
+  BOOST_DUR:  300,
+  BOOST_REGEN:2,
+  CRASH_SPD:  4.5,      // min speed for real crash
+  // scoring
+  SCARE_BASE: 15,
+  RACE_WIN:   300,
 };
 
-// ============================================================
-// GLOBAL STATE
-// ============================================================
-let scene, camera, renderer, clock;
-let gameState, scooterCtrl, cityGen, npcSystem, trickSystem, crashSystem, shopSystem, camSystem, audioSystem;
-let ambulance = null;
-let animFrameId = null;
-let gameStarted = false;
+// Palette: [grey/Soviet, vivid/renovated]
+const PAL = {
+  asphalt:    ['#2e2e30','#3c3c50'],
+  road_mark:  ['#3a3a3a','#888866'],
+  sidewalk:   ['#3a3938','#a09070'],
+  grass:      ['#2e302a','#4a8a3a'],
+  tree_trunk: ['#2e2820','#5a3c20'],
+  tree_leaf:  ['#282e22','#3a8a2a'],
+  bld_panel:  ['#363638','#9a8c7e'],
+  bld_khrush: ['#38383a','#c8b88a'],
+  bld_soviet: ['#34343a','#b0a898'],
+  bld_win_dark: ['#1a1a1e','#1a2a3a'],
+  bld_win_lit:  ['#242428','#e8d870'],
+  snow:       ['#5a5a60','#e8e8f0'],
+  dirt:       ['#302c28','#6a5a40'],
+  sky:        ['#1a1a22','#5a8abf'],
+};
 
-const GS = { // live game state
-  mode: 'RIDING', // RIDING | SHOP | CRASH
+function lerpHex(a, b, t) {
+  t = Math.max(0, Math.min(1, t));
+  const ai = parseInt(a.slice(1),16), bi = parseInt(b.slice(1),16);
+  const ar=(ai>>16)&255, ag=(ai>>8)&255, ab=ai&255;
+  const br=(bi>>16)&255, bg=(bi>>8)&255, bb=bi&255;
+  const rr=Math.round(ar+t*(br-ar));
+  const rg=Math.round(ag+t*(bg-ag));
+  const rb=Math.round(ab+t*(bb-ab));
+  return '#'+((rr<<16)|(rg<<8)|rb).toString(16).padStart(6,'0');
+}
+function col(key, v) {
+  const p = PAL[key];
+  if (!p) return '#ff00ff';
+  return lerpHex(p[0], p[1], v);
+}
+
+// ─── GAME STATE ──────────────────────────────────────────────────────────────
+const GS = {
+  mode: 'menu',     // menu | play | shop | crash | dead
   score: 0,
-  points: 0,
-  timeScale: 1,
-  scooter: {
-    pos: null, // THREE.Vector3
-    heading: 0,
-    speed: 0,
-    isAirborne: false,
-    airFrames: 0,
-    spinDeg: 0,
-    wheelieFrames: 0,
-    hp: 100,
-    boostLeft: 0,
-    upgrades: { motor: 0, deck: 0, battery: 0, wheels: 0, frame: 0 },
-  },
-  dmg: {
-    maxSpeed: 0, impactForce: 0, hitsCount: 0,
-    pedScared: 0, tricks: [], finalScore: 0,
-  },
+  coins: 0,
+  vitality: 0,
+  targetVitality: 0,
+  comboMult: 1,
+  comboTimer: 0,
+  trickTimer: 0,
+  trickNames: [],
+  bannerTimer: 0,
+  bannerText: '',
 };
 
-function getStats() {
-  const u = GS.scooter.upgrades;
-  return {
-    topSpeed:    CONFIG.scooter.baseSpeed + u.motor * 4.5,
-    accel:       CONFIG.scooter.baseAccel + u.motor * 0.038,
-    turnSpeed:   CONFIG.scooter.baseTurn  + u.deck  * 0.007,
-    boostMax:    CONFIG.scooter.baseBoostFrames + u.battery * 42,
-    driftFactor: 1.0 - u.wheels * 0.13,
-    partCount:   3 + u.frame * 2,
-    crashMult:   1.0 + u.frame * 0.4,
-  };
-}
-
-// ============================================================
-// CITY GENERATOR
-// ============================================================
-class CityGenerator {
-  constructor() {
-    this.obstacles = []; // {bbox, type}
-    this.ramps     = []; // {pos, halfW, halfD}
-    this.roadSegs  = []; // road rectangles for NPC pathing
-    this.spawnPts  = [];
-    this._build();
-  }
-
-  _build() {
-    const G = CONFIG.city;
-    const total  = G.gridSize * G.blockSize;
-    const half   = total / 2;
-    const road   = G.roadWidth;
-    const block  = G.blockSize;
-
-    // Ground
-    const groundGeo = new THREE.PlaneGeometry(total + 40, total + 40);
-    const groundMat = new THREE.MeshLambertMaterial({ color: 0x4a4a55 });
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    scene.add(ground);
-
-    // Road paint (lighter strips)
-    for (let i = 0; i <= G.gridSize; i++) {
-      const cx = -half + i * block;
-      const cz = -half + i * block;
-      // vertical road
-      const rv = new THREE.Mesh(
-        new THREE.PlaneGeometry(road, total + 40),
-        new THREE.MeshLambertMaterial({ color: 0x555560 })
-      );
-      rv.rotation.x = -Math.PI / 2;
-      rv.position.set(cx, 0.01, 0);
-      scene.add(rv);
-      // horizontal road
-      const rh = new THREE.Mesh(
-        new THREE.PlaneGeometry(total + 40, road),
-        new THREE.MeshLambertMaterial({ color: 0x555560 })
-      );
-      rh.rotation.x = -Math.PI / 2;
-      rh.position.set(0, 0.01, cz);
-      scene.add(rh);
-
-      // Dashes
-      for (let d = -half; d < half; d += 8) {
-        const dash = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.25, 3.5),
-          new THREE.MeshLambertMaterial({ color: 0xffff88 })
-        );
-        dash.rotation.x = -Math.PI / 2;
-        dash.position.set(cx, 0.02, d + 2);
-        scene.add(dash);
-        const dash2 = new THREE.Mesh(
-          new THREE.PlaneGeometry(3.5, 0.25),
-          new THREE.MeshLambertMaterial({ color: 0xffff88 })
-        );
-        dash2.rotation.x = -Math.PI / 2;
-        dash2.position.set(d + 2, 0.02, cz);
-        scene.add(dash2);
-      }
-    }
-
-    // Sidewalk color
-    const swMat = new THREE.MeshLambertMaterial({ color: 0x999988 });
-    for (let gx = 0; gx < G.gridSize; gx++) {
-      for (let gz = 0; gz < G.gridSize; gz++) {
-        const bx = -half + gx * block + road / 2;
-        const bz = -half + gz * block + road / 2;
-        const bw = block - road;
-        const sw = new THREE.Mesh(new THREE.PlaneGeometry(bw, bw), swMat);
-        sw.rotation.x = -Math.PI / 2;
-        sw.position.set(bx + bw / 2, 0.015, bz + bw / 2);
-        scene.add(sw);
-        this._buildBlock(bx, bz, bw);
-        this.spawnPts.push(new THREE.Vector3(bx + bw * 0.3, 0, bz + bw * 0.5));
-        this.spawnPts.push(new THREE.Vector3(bx + bw * 0.7, 0, bz + bw * 0.2));
-      }
-    }
-
-    // Road segments for courier pathing
-    for (let i = 0; i <= G.gridSize; i++) {
-      const x = -half + i * block;
-      this.roadSegs.push({ axis: 'x', fixed: x, min: -half, max: half });
-    }
-    for (let i = 0; i <= G.gridSize; i++) {
-      const z = -half + i * block;
-      this.roadSegs.push({ axis: 'z', fixed: z, min: -half, max: half });
-    }
-
-    // Ramps
-    this._placeRamps();
-  }
-
-  _buildBlock(bx, bz, bw) {
-    const colors = [0xd4a574, 0xc4b898, 0x8a9b6e, 0xb5c4d4, 0xe8d5b0, 0xcc9988, 0xaacc99];
-    const rng = (a, b) => a + Math.random() * (b - a);
-
-    const count = 1 + Math.floor(Math.random() * 4);
-    for (let i = 0; i < count; i++) {
-      const w = rng(4, Math.min(10, bw * 0.45));
-      const d = rng(4, Math.min(10, bw * 0.45));
-      const h = rng(5, 28);
-      const px = bx + rng(1, bw - w - 1);
-      const pz = bz + rng(1, bw - d - 1);
-
-      const building = new THREE.Mesh(
-        new THREE.BoxGeometry(w, h, d),
-        new THREE.MeshLambertMaterial({ color: colors[Math.floor(Math.random() * colors.length)] })
-      );
-      building.position.set(px + w / 2, h / 2, pz + d / 2);
-      scene.add(building);
-
-      const bbox = new THREE.Box3().setFromObject(building);
-      bbox.min.y = -1;
-      this.obstacles.push({ bbox, type: 'building' });
-    }
-
-    // Props: benches & bins
-    for (let i = 0; i < 2; i++) {
-      const prop = new THREE.Mesh(
-        new THREE.BoxGeometry(0.6, 0.8, 0.5),
-        new THREE.MeshLambertMaterial({ color: 0x663322 })
-      );
-      prop.position.set(bx + rng(0.5, bw - 0.5), 0.4, bz + rng(0.5, bw - 0.5));
-      scene.add(prop);
-      const pb = new THREE.Box3().setFromObject(prop);
-      pb.min.y = -1;
-      this.obstacles.push({ bbox: pb, type: 'prop' });
-    }
-  }
-
-  _placeRamps() {
-    const G = CONFIG.city;
-    const total = G.gridSize * G.blockSize;
-    const half  = total / 2;
-    const block = G.blockSize;
-
-    const rampMat = new THREE.MeshLambertMaterial({ color: 0xffaa00 });
-    for (let i = 0; i < G.gridSize; i++) {
-      for (let j = 0; j < G.gridSize; j++) {
-        if (Math.random() > 0.4) continue;
-        const rx = -half + i * block + G.roadWidth * 0.5;
-        const rz = -half + j * block + G.roadWidth * 0.5;
-        const rampMesh = this._makeRampMesh(rampMat);
-        rampMesh.position.set(rx, 0, rz);
-        rampMesh.rotation.y = Math.random() * Math.PI * 2;
-        scene.add(rampMesh);
-        this.ramps.push({ pos: rampMesh.position.clone(), rot: rampMesh.rotation.y });
-      }
-    }
-  }
-
-  _makeRampMesh(mat) {
-    const geo = new THREE.BufferGeometry();
-    const verts = new Float32Array([
-      -1, 0,  0.8,   1, 0,  0.8,   1, 0, -0.8,
-      -1, 0,  0.8,   1, 0, -0.8,  -1, 0, -0.8,
-      -1, 0, -0.8,   1, 0, -0.8,   1, 0.9, -0.8,
-      -1, 0, -0.8,   1, 0.9, -0.8, -1, 0.9, -0.8,
-      -1, 0,  0.8,  -1, 0, -0.8,  -1, 0.9, -0.8,
-       1, 0,  0.8,   1, 0.9, -0.8,  1, 0, -0.8,
-    ]);
-    geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
-    geo.computeVertexNormals();
-    return new THREE.Mesh(geo, mat);
-  }
-
-  getElevation(x, z) {
-    for (const r of this.ramps) {
-      const dx = x - r.pos.x, dz = z - r.pos.z;
-      // rotate into ramp local space
-      const lx =  dx * Math.cos(-r.rot) + dz * Math.sin(-r.rot);
-      const lz = -dx * Math.sin(-r.rot) + dz * Math.cos(-r.rot);
-      if (Math.abs(lx) < 1.1 && lz > -0.9 && lz < 0.9) {
-        const t = (-lz + 0.8) / 1.6; // 0..1 along ramp
-        if (t > 0 && t < 1) return Math.max(0, t * 0.9);
-      }
-    }
-    return 0;
-  }
-
-  getObstaclesNear(pos, r) {
-    const sphere = new THREE.Sphere(pos, r);
-    return this.obstacles.filter(o => o.bbox.intersectsSphere(sphere));
-  }
-
-  getRandRoadPoint() {
-    const G = CONFIG.city;
-    const total = G.gridSize * G.blockSize;
-    const half  = total / 2;
-    const seg = this.roadSegs[Math.floor(Math.random() * this.roadSegs.length)];
-    const t = Math.random();
-    if (seg.axis === 'x') return new THREE.Vector3(seg.fixed, 0, seg.min + t * (seg.max - seg.min));
-    else                  return new THREE.Vector3(seg.min + t * (seg.max - seg.min), 0, seg.fixed);
-  }
-}
-
-// ============================================================
-// SCOOTER CONTROLLER
-// ============================================================
-class ScooterController {
-  constructor() {
-    this.mesh     = this._buildMesh();
-    this.keys     = {};
-    this.velocity = new THREE.Vector3();
-    this.boostFrames = 0;
-    this._setupInput();
-    scene.add(this.mesh);
-  }
-
-  _buildMesh() {
-    const g = new THREE.Group();
-    // Deck
-    const deckMat = new THREE.MeshLambertMaterial({ color: 0x1155ff });
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.07, 0.95), deckMat);
-    deck.position.y = 0.12;
-    // Stem
-    const stemMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
-    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.85, 8), stemMat);
-    stem.position.set(0, 0.57, -0.38);
-    stem.rotation.x = 0.18;
-    // Handlebar
-    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.52, 8), stemMat);
-    bar.rotation.z = Math.PI / 2;
-    bar.position.set(0, 0.97, -0.44);
-    // Wheels
-    const wheelGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.055, 14);
-    wheelGeo.rotateZ(Math.PI / 2);
-    const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-    this.wheelF = new THREE.Mesh(wheelGeo, wheelMat);
-    this.wheelR = new THREE.Mesh(wheelGeo.clone(), wheelMat);
-    this.wheelF.position.set(0, 0.12, -0.42);
-    this.wheelR.position.set(0, 0.12,  0.42);
-    // Rider body
-    const bodyMat = new THREE.MeshLambertMaterial({ color: 0xff5500 });
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.10, 0.58, 8), bodyMat);
-    body.position.set(0, 0.62, 0.06);
-    // Rider head
-    const headMat = new THREE.MeshLambertMaterial({ color: 0xffcc99 });
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), headMat);
-    head.position.set(0, 1.02, 0.06);
-    // Helmet
-    const helmetMat = new THREE.MeshLambertMaterial({ color: 0x222288 });
-    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 6), helmetMat);
-    helmet.position.set(0, 1.07, 0.06);
-    helmet.scale.y = 0.7;
-    // Brand label (tiny box in Whoosh cyan)
-    const brand = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, 0.3), new THREE.MeshLambertMaterial({ color: 0x00ddcc }));
-    brand.position.set(0, 0.16, 0.1);
-
-    g.add(deck, stem, bar, this.wheelF, this.wheelR, body, head, helmet, brand);
-    return g;
-  }
-
-  _setupInput() {
-    document.addEventListener('keydown', e => { this.keys[e.code] = true; });
-    document.addEventListener('keyup',   e => { this.keys[e.code] = false; });
-  }
-
-  update(delta) {
-    if (GS.mode !== 'RIDING') return;
-    const sc    = GS.scooter;
-    const stats = getStats();
-    const k     = this.keys;
-
-    const fwd  = k['ArrowUp']    || k['KeyW'];
-    const back = k['ArrowDown']  || k['KeyS'];
-    const lt   = k['ArrowLeft']  || k['KeyA'];
-    const rt   = k['ArrowRight'] || k['KeyD'];
-    const boost = k['Space'];
-    const trick = k['ShiftLeft'] || k['ShiftRight'];
-
-    // Boost recharge / consume
-    if (!boost) {
-      sc.boostLeft = Math.min(sc.boostLeft + 0.4, stats.boostMax);
-    }
-
-    // Acceleration
-    if (boost && sc.boostLeft > 0) {
-      sc.boostLeft = Math.max(0, sc.boostLeft - 1);
-      sc.speed = Math.min(sc.speed + stats.accel * 2.8, stats.topSpeed * 1.3);
-      // Overspeed damage
-      if (sc.speed > stats.topSpeed * 1.15) {
-        sc.hp -= (sc.speed - stats.topSpeed * 1.15) * 0.08;
-        sc.hp = Math.max(0, sc.hp);
-      }
-    } else if (fwd) {
-      sc.speed = Math.min(sc.speed + stats.accel, stats.topSpeed);
-    } else if (back) {
-      sc.speed = Math.max(sc.speed - stats.accel * 2.2, -1.8);
-    } else {
-      sc.speed *= CONFIG.physics.groundFriction;
-      if (Math.abs(sc.speed) < 0.05) sc.speed = 0;
-    }
-
-    // Steering (speed-sensitive)
-    if (!sc.isAirborne) {
-      const tFactor = stats.turnSpeed * (1 - Math.abs(sc.speed) / (stats.topSpeed * 2.2 + 0.001));
-      if (lt) sc.heading += Math.max(tFactor, stats.turnSpeed * 0.15);
-      if (rt) sc.heading -= Math.max(tFactor, stats.turnSpeed * 0.15);
-    } else {
-      // Spin in air with trick key
-      if (trick) {
-        if (lt) sc.spinDeg += 6.5;
-        if (rt) sc.spinDeg -= 6.5;
-      }
-    }
-
-    // Move direction
-    const sinH = Math.sin(sc.heading), cosH = Math.cos(sc.heading);
-    this.velocity.set(-sinH * sc.speed, this.velocity.y, -cosH * sc.speed);
-
-    // Gravity
-    if (sc.isAirborne) {
-      this.velocity.y += CONFIG.physics.gravity * delta;
-      sc.airFrames++;
-    }
-
-    // Apply velocity
-    sc.pos.addScaledVector(this.velocity, delta);
-
-    // Ground check
-    const groundY = cityGen.getElevation(sc.pos.x, sc.pos.z);
-    if (sc.pos.y <= groundY + 0.001 && this.velocity.y <= 0) {
-      if (sc.isAirborne && sc.airFrames > 4) {
-        trickSystem.onLand(sc.airFrames, sc.spinDeg, sc.speed);
-      }
-      sc.pos.y = groundY;
-      this.velocity.y = 0;
-      sc.isAirborne = false;
-      sc.airFrames = 0;
-      sc.spinDeg = 0;
-    }
-
-    // Ramp launch
-    if (!sc.isAirborne && groundY > 0.4 && this.velocity.y === 0) {
-      sc.isAirborne = true;
-      this.velocity.y = sc.speed * 0.55 + 2;
-    }
-
-    // Wheelie
-    if (fwd && trick && !sc.isAirborne && sc.speed > 2) {
-      sc.wheelieFrames++;
-      this.mesh.rotation.x = -Math.min(sc.wheelieFrames * 0.009, 0.38);
-      trickSystem.onWheelie(sc.wheelieFrames);
-    } else {
-      if (sc.wheelieFrames > 0) sc.wheelieFrames = 0;
-      this.mesh.rotation.x = 0;
-    }
-
-    // Track max speed
-    const kmh = sc.speed * 3.6;
-    if (kmh > GS.dmg.maxSpeed) GS.dmg.maxSpeed = kmh;
-
-    // Boundary clamp
-    const G = CONFIG.city;
-    const lim = G.gridSize * G.blockSize / 2 - 1;
-    sc.pos.x = Math.max(-lim, Math.min(lim, sc.pos.x));
-    sc.pos.z = Math.max(-lim, Math.min(lim, sc.pos.z));
-
-    // Collision check
-    this._checkCollisions();
-
-    // Sync mesh
-    this.mesh.position.copy(sc.pos);
-    this.mesh.rotation.y = sc.heading;
-
-    // Wheel spin
-    const spin = sc.speed * 0.55 * delta * 60;
-    this.wheelF.rotation.x += spin;
-    this.wheelR.rotation.x += spin;
-  }
-
-  _checkCollisions() {
-    const sc   = GS.scooter;
-    const near = cityGen.getObstaclesNear(sc.pos, 1.2);
-    for (const obs of near) {
-      if (!obs.bbox.containsPoint(sc.pos)) continue;
-      const speed = Math.abs(sc.speed);
-      if (speed > CONFIG.scooter.crashThreshold && sc.hp < 80) {
-        crashSystem.trigger(speed, sc.pos.clone());
-        return;
-      } else if (speed > CONFIG.scooter.crashThreshold) {
-        crashSystem.trigger(speed, sc.pos.clone());
-        return;
-      } else if (speed > 0.5) {
-        sc.speed *= -0.25;
-        sc.hp -= speed * 3;
-        sc.hp = Math.max(0, sc.hp);
-        GS.dmg.hitsCount++;
-        hudShowFlash('БУМ!', '#ff4400');
-        // Push out
-        sc.pos.x += Math.sin(sc.heading + Math.PI) * 0.5;
-        sc.pos.z += Math.cos(sc.heading + Math.PI) * 0.5;
-      }
-    }
-    // HP zero forced crash
-    if (sc.hp <= 0 && GS.mode === 'RIDING') {
-      crashSystem.trigger(sc.speed + 3, sc.pos.clone());
-    }
-  }
-}
-
-// ============================================================
-// NPC SYSTEM
-// ============================================================
-class Pedestrian {
-  constructor(pos) {
-    this.state = 'WALKING';
-    this.timer = 0;
-    this.walkTarget = pos.clone();
-    this.walkSpeed = 0.7 + Math.random() * 0.5;
-    this.mesh = this._buildMesh(pos);
-    this.emoji = null;
-    scene.add(this.mesh);
-  }
-
-  _buildMesh(pos) {
-    const g = new THREE.Group();
-    const colors = [0xff99cc, 0x99ccff, 0xffcc99, 0xcc99ff, 0x99ffcc];
-    const col = colors[Math.floor(Math.random() * colors.length)];
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.14, 0.95, 7), new THREE.MeshLambertMaterial({ color: col }));
-    body.position.y = 0.7;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), new THREE.MeshLambertMaterial({ color: 0xffccaa }));
-    head.position.y = 1.4;
-    g.add(body, head);
-    g.position.copy(pos);
-    return g;
-  }
-
-  update(delta, scPos, scSpeed) {
-    const dist = this.mesh.position.distanceTo(scPos);
-
-    if (this.state === 'WALKING') {
-      // wander
-      const dir = new THREE.Vector3().subVectors(this.walkTarget, this.mesh.position);
-      if (dir.length() < 0.8) this._newTarget();
-      dir.normalize().multiplyScalar(this.walkSpeed * delta);
-      this.mesh.position.add(dir);
-      this.mesh.lookAt(this.walkTarget.x, this.mesh.position.y, this.walkTarget.z);
-
-      if (dist < CONFIG.npc.scareRadius && scSpeed > 2.5) {
-        this._scare(scPos, scSpeed);
-      }
-    } else if (this.state === 'SCARED') {
-      this.timer--;
-      this.mesh.position.y = Math.abs(Math.sin(this.timer * 0.25)) * 0.25;
-      this.mesh.rotation.y += 0.18;
-      if (this.timer <= 0) { this.state = 'FLEE'; this._newTarget(scPos, true); }
-    } else if (this.state === 'FLEE') {
-      const dir = new THREE.Vector3().subVectors(this.walkTarget, this.mesh.position);
-      if (dir.length() < 0.8) { this.state = 'RECOVER'; this.timer = 160; return; }
-      dir.normalize().multiplyScalar(this.walkSpeed * 2.8 * delta);
-      this.mesh.position.add(dir);
-      this.mesh.position.y = 0;
-    } else if (this.state === 'RECOVER') {
-      this.timer--;
-      this.mesh.position.y = 0;
-      if (this.timer <= 0) { this.state = 'WALKING'; this._newTarget(); this._removeEmoji(); }
-    }
-
-    if (this.emoji) {
-      this.emoji.position.set(this.mesh.position.x, this.mesh.position.y + 2.2, this.mesh.position.z);
-    }
-  }
-
-  _scare(scPos, speed) {
-    this.state = 'SCARED';
-    this.timer = 42;
-    const bonus = Math.round(CONFIG.scoring.scarePed * (speed / 3.5));
-    GS.score += bonus;
-    GS.points += bonus;
-    GS.dmg.pedScared++;
-    hudPopup(`😱 +${bonus}`, this.mesh.position);
-    this._spawnEmoji();
-  }
-
-  _newTarget(avoidPos, flee) {
-    const sp = cityGen.spawnPts;
-    let best = sp[Math.floor(Math.random() * sp.length)].clone();
-    if (flee && avoidPos) {
-      // pick point furthest from scooter
-      let maxD = 0;
-      for (const pt of sp) {
-        const d = pt.distanceTo(avoidPos);
-        if (d > maxD) { maxD = d; best = pt.clone(); }
-      }
-    }
-    this.walkTarget = best;
-  }
-
-  _spawnEmoji() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 72; canvas.height = 40;
-    const ctx = canvas.getContext('2d');
-    ctx.font = '32px serif';
-    ctx.fillText('😱', 2, 36);
-    const tex = new THREE.CanvasTexture(canvas);
-    this.emoji = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
-    this.emoji.scale.set(1.4, 0.8, 1);
-    scene.add(this.emoji);
-  }
-
-  _removeEmoji() {
-    if (this.emoji) { scene.remove(this.emoji); this.emoji = null; }
-  }
-}
-
-// Грейды курьеров: имя, скорость (м/с), цвет велика, цвет куртки, цвет бокса, награда
-const COURIER_GRADES = [
-  { name: 'Стажёр',   speed: 2.2,  bikeColor: 0xFFCC00, jacketColor: 0x888888, boxColor: 0xFFCC00, reward: 80,  label: '🐢' },
-  { name: 'Яндекс',   speed: 3.8,  bikeColor: 0xFFCC00, jacketColor: 0x333399, boxColor: 0xFFCC00, reward: 150, label: '🟡' },
-  { name: 'Самокат',  speed: 5.5,  bikeColor: 0x00ddcc, jacketColor: 0x1155ff, boxColor: 0x00ddcc, reward: 280, label: '🛴' },
-  { name: 'Спринтер', speed: 7.8,  bikeColor: 0xff4400, jacketColor: 0xff2200, boxColor: 0xff4400, reward: 500, label: '🔥' },
-  { name: 'DEMON',    speed: 11.0, bikeColor: 0x111111, jacketColor: 0x222222, boxColor: 0xff0000, reward: 999, label: '💀' },
+const UPGRADES = [
+  { id:'motor',  name:'⚡ Мотор',    desc:'Скорость и ускорение',       costs:[80,160,300,550,900],  maxLevel:5 },
+  { id:'deck',   name:'🛹 Дека',     desc:'Управляемость и повороты',   costs:[60,120,250,450,750],  maxLevel:5 },
+  { id:'battery',name:'🔋 Батарея',  desc:'Длительность буста',         costs:[70,140,260,480,800],  maxLevel:5 },
+  { id:'wheels', name:'🏎️ Колёса',  desc:'Дрифт и скольжение',         costs:[90,180,320,600,950],  maxLevel:5 },
+  { id:'frame',  name:'💥 Рама',     desc:'Больше кусков при краше',    costs:[50,100,200,400,700],  maxLevel:5 },
 ];
+const UP = { motor:0, deck:0, battery:0, wheels:0, frame:0 };
 
-class Courier {
-  constructor(gradeIndex) {
-    this.grade = COURIER_GRADES[gradeIndex];
-    // Едем по одной из 4 осей: 0=+X, 1=-X, 2=+Z, 3=-Z
-    this.axis  = Math.floor(Math.random() * 4);
-    this.raceStartDist = null; // позиция курьера в момент начала гонки
-    this.beaten = false;
-    this.beatTimer = 0;
-    this.currentSpeed = 0; // инерция: стартует с нуля, разгоняется плавно
-    this.mesh = this._buildMesh();
-    // Стартовая позиция — на дороге
-    const start = cityGen.getRandRoadPoint();
-    this.mesh.position.copy(start);
-    // Ориентация по оси движения
-    const angles = [Math.PI / 2, -Math.PI / 2, 0, Math.PI];
-    this.mesh.rotation.y = angles[this.axis];
-    scene.add(this.mesh);
-    // Label над курьером
-    this._buildLabel();
-  }
-
-  _buildMesh() {
-    const g = new THREE.Group();
-    const { bikeColor, jacketColor, boxColor } = this.grade;
-    const bikeMat   = new THREE.MeshLambertMaterial({ color: bikeColor });
-    const dark      = new THREE.MeshLambertMaterial({ color: 0x111111 });
-    const jacketMat = new THREE.MeshLambertMaterial({ color: jacketColor });
-    const boxMat    = new THREE.MeshLambertMaterial({ color: boxColor });
-
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.32, 0.9), bikeMat);
-    frame.position.y = 0.35;
-
-    const wgeo = new THREE.TorusGeometry(0.22, 0.045, 6, 14);
-    const wf = new THREE.Mesh(wgeo, dark);       wf.position.set(0, 0.22, -0.44); wf.rotation.y = Math.PI / 2;
-    const wr = new THREE.Mesh(wgeo.clone(), dark); wr.position.set(0, 0.22,  0.44); wr.rotation.y = Math.PI / 2;
-
-    const box   = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.40, 0.44), boxMat);
-    box.position.set(0, 0.78, 0.28);
-
-    const rider = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.55, 7), jacketMat);
-    rider.position.set(0, 0.65, -0.04);
-
-    const rhead = new THREE.Mesh(new THREE.SphereGeometry(0.13, 7, 5), new THREE.MeshLambertMaterial({ color: 0xffccaa }));
-    rhead.position.set(0, 1.05, -0.04);
-
-    // Спидометр-нашивка на боксе (цветная полоска — визуальный намёк на скорость)
-    const stripe = new THREE.Mesh(
-      new THREE.BoxGeometry(0.46, 0.07, 0.02),
-      new THREE.MeshLambertMaterial({ color: this._speedColor() })
-    );
-    stripe.position.set(0, 0.95, 0.07);
-
-    // Храним колёса для анимации
-    this.wf = wf; this.wr = wr;
-
-    g.add(frame, wf, wr, box, rider, rhead, stripe);
-    return g;
-  }
-
-  _speedColor() {
-    // Цветовая кодировка скорости: зелёный → жёлтый → красный → чёрный
-    const speeds = COURIER_GRADES.map(g => g.speed);
-    const min = speeds[0], max = speeds[speeds.length - 1];
-    const t = (this.grade.speed - min) / (max - min);
-    if (t < 0.33) return 0x00ff44;
-    if (t < 0.66) return 0xffcc00;
-    if (t < 0.85) return 0xff4400;
-    return 0xff0000;
-  }
-
-  _buildLabel() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 160; canvas.height = 52;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.roundRect(0, 0, 160, 52, 8);
-    ctx.fill();
-    ctx.font = 'bold 18px monospace';
-    ctx.fillStyle = '#fff';
-    ctx.fillText(`${this.grade.label} ${this.grade.name}`, 6, 22);
-    ctx.font = '14px monospace';
-    ctx.fillStyle = '#ffcc00';
-    ctx.fillText(`+${this.grade.reward} 🪙  ${(this.grade.speed * 3.6).toFixed(0)} км/ч`, 6, 44);
-    const tex = new THREE.CanvasTexture(canvas);
-    this.labelSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
-    this.labelSprite.scale.set(3.2, 1.05, 1);
-    this.labelSprite.position.set(0, 2.2, 0);
-    this.mesh.add(this.labelSprite);
-  }
-
-  update(delta, scPos, scSpeed, cars) {
-    if (GS.mode !== 'RIDING') return;
-
-    const targetSpeed = this.beaten ? this.grade.speed * 0.25 : this.grade.speed;
-
-    // --- Проверка блокировки машиной ---
-    // Смотрим вперёд на 4м по оси движения
-    const dirs = [
-      new THREE.Vector3( 1, 0,  0),
-      new THREE.Vector3(-1, 0,  0),
-      new THREE.Vector3( 0, 0,  1),
-      new THREE.Vector3( 0, 0, -1),
-    ];
-    const fwdDir = dirs[this.axis];
-    const lookAhead = this.mesh.position.clone().addScaledVector(fwdDir, 3.5);
-    let blocked = false;
-    for (const car of cars) {
-      if (car.mesh.position.distanceTo(lookAhead) < 2.8) {
-        blocked = true;
-        break;
-      }
-    }
-
-    // --- Инерция: плавный разгон и торможение ---
-    const accel = this.grade.speed * 1.8; // разгон: ~0.5с до макс скорости
-    const brake = this.grade.speed * 4.0; // торможение: резче
-    if (blocked) {
-      // Тормозим перед машиной
-      this.currentSpeed = Math.max(0, this.currentSpeed - brake * delta);
-    } else {
-      // Разгоняемся до целевой
-      if (this.currentSpeed < targetSpeed) {
-        this.currentSpeed = Math.min(targetSpeed, this.currentSpeed + accel * delta);
-      } else {
-        this.currentSpeed = Math.max(targetSpeed, this.currentSpeed - brake * delta);
-      }
-    }
-
-    this._moveForward(this.currentSpeed, delta);
-
-    if (this.beaten) {
-      this.beatTimer++;
-      if (this.beatTimer > 300) { this.beaten = false; this.beatTimer = 0; }
-      return;
-    }
-
-    // Гонка: проверяем только дистанцию — игрок сам решает гоняться или нет
-    const dist = this.mesh.position.distanceTo(scPos);
-
-    if (this.raceStartDist !== null && dist > 30) {
-      // Кто вырвался вперёд?
-      const courierAhead = this._isAheadOf(scPos, fwdDir);
-      if (courierAhead) {
-        hudPopup(`😤 ${this.grade.name} обогнал!`, scPos);
-      } else {
-        GS.score  += this.grade.reward;
-        GS.points += this.grade.reward;
-        hudPopup(`🏁 ${this.grade.name} побеждён! +${this.grade.reward}`, scPos);
-        this.beaten = true;
-        this.beatTimer = 0;
-      }
-      this.raceStartDist = null;
-    }
-
-    if (dist < 10 && scSpeed > 1.5 && this.raceStartDist === null && !this.beaten) {
-      this.raceStartDist = this.mesh.position.clone();
-      hudPopup(`🏁 ${this.grade.label} ${this.grade.name}! +${this.grade.reward} если обгонишь`, scPos);
-    }
-    if (dist > 40 && this.raceStartDist !== null) {
-      this.raceStartDist = null;
-    }
-
-    // Wrap-around
-    const lim = CONFIG.city.gridSize * CONFIG.city.blockSize / 2;
-    const p = this.mesh.position;
-    if (p.x >  lim) p.x = -lim + 1;
-    if (p.x < -lim) p.x =  lim - 1;
-    if (p.z >  lim) p.z = -lim + 1;
-    if (p.z < -lim) p.z =  lim - 1;
-
-    // Анимация колёс (скорость = currentSpeed)
-    const spin = this.currentSpeed * 3.5 * delta;
-    if (this.wf) this.wf.rotation.x += spin;
-    if (this.wr) this.wr.rotation.x += spin;
-  }
-
-  _isAheadOf(scPos, fwdDir) {
-    // Возвращает true если курьер впереди игрока по вектору движения курьера
-    const toPlayer = new THREE.Vector3().subVectors(scPos, this.mesh.position).setY(0);
-    return toPlayer.dot(fwdDir) < 0; // игрок сзади курьера
-  }
-
-  _moveForward(spd, delta) {
-    const dirs = [
-      new THREE.Vector3( 1, 0,  0),
-      new THREE.Vector3(-1, 0,  0),
-      new THREE.Vector3( 0, 0,  1),
-      new THREE.Vector3( 0, 0, -1),
-    ];
-    const dir = dirs[this.axis];
-    this.mesh.position.addScaledVector(dir, spd * delta);
-    this.mesh.rotation.y = Math.atan2(dir.x, dir.z);
-  }
+function upStat() {
+  const s = {};
+  s.topSpeed    = C.TOP_SPEED   * (1 + UP.motor   * 0.22);
+  s.accel       = C.ACCEL       * (1 + UP.motor   * 0.18);
+  s.turnSpeed   = C.TURN_SPEED  * (1 + UP.deck    * 0.15);
+  s.friction    = C.FRICTION    + UP.wheels * 0.007;   // more drift
+  s.boostDur    = C.BOOST_DUR   + UP.battery * 80;
+  s.boostRegen  = C.BOOST_REGEN + UP.battery * 0.6;
+  s.debrisParts = 4 + UP.frame * 2;
+  return s;
 }
 
-// ============================================================
-// CAR SYSTEM
-// ============================================================
-const CAR_COLORS = [0xcc2222, 0x2244cc, 0xdddddd, 0x228822, 0xddaa22, 0x884488, 0x222222, 0xee6622];
+// ─── WORLD GENERATION ────────────────────────────────────────────────────────
+const T = C.TILE;
+const STEP = C.ROAD + C.BLOCK; // tiles per city block (3+8=11)
 
-class Car {
-  constructor() {
-    // Ось движения: 0=+X, 1=-X, 2=+Z, 3=-Z
-    this.axis = Math.floor(Math.random() * 4);
-    this.speed = 4.5 + Math.random() * 6.5; // 16–36 км/ч
-    this.currentSpeed = this.speed * (0.3 + Math.random() * 0.7);
-    this.blocked = false;
-    this.mesh = this._buildMesh();
-    this.mesh.position.copy(cityGen.getRandRoadPoint());
-    this.mesh.position.y = 0;
-    const angles = [Math.PI / 2, -Math.PI / 2, 0, Math.PI];
-    this.mesh.rotation.y = angles[this.axis];
-    // Колёса для анимации
-    scene.add(this.mesh);
-  }
+let tileMap = [];
+let buildings = [];
+let trees = [];
+let WORLD_W, WORLD_H;
 
-  _buildMesh() {
-    const g = new THREE.Group();
-    const col   = CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)];
-    const body  = new THREE.MeshLambertMaterial({ color: col });
-    const dark  = new THREE.MeshLambertMaterial({ color: 0x111111 });
-    const glass = new THREE.MeshLambertMaterial({ color: 0x88bbdd, transparent: true, opacity: 0.7 });
+function genWorld() {
+  WORLD_W = C.GW * STEP * T;
+  WORLD_H = C.GH * STEP * T;
+  tileMap = [];
+  buildings = [];
+  trees = [];
 
-    // Кузов
-    const carBody = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.75, 4.0), body);
-    carBody.position.y = 0.55;
+  const TW = C.GW * STEP + C.ROAD;
+  const TH = C.GH * STEP + C.ROAD;
 
-    // Кабина
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.55, 2.2), body);
-    cabin.position.set(0, 1.15, -0.2);
-
-    // Стёкла
-    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.42, 0.06), glass);
-    windshield.position.set(0, 1.18, 0.87);
-
-    // 4 колеса
-    const wgeo = new THREE.CylinderGeometry(0.32, 0.32, 0.22, 12);
-    const positions = [[-0.95, 0.32, -1.2], [0.95, 0.32, -1.2], [-0.95, 0.32, 1.2], [0.95, 0.32, 1.2]];
-    this.wheels = [];
-    for (const [x, y, z] of positions) {
-      const w = new THREE.Mesh(wgeo.clone(), dark);
-      w.rotation.z = Math.PI / 2;
-      w.position.set(x, y, z);
-      g.add(w);
-      this.wheels.push(w);
+  // Init
+  for (let y = 0; y < TH; y++) {
+    tileMap[y] = [];
+    for (let x = 0; x < TW; x++) {
+      tileMap[y][x] = { type: 'lot' };
     }
-
-    // Фары (жёлтые)
-    const headlight = new THREE.MeshLambertMaterial({ color: 0xffffaa, emissive: 0xffff44, emissiveIntensity: 0.5 });
-    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.15, 0.06), headlight);
-    hl.position.set(0.55, 0.65, 2.03);
-    const hr = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.15, 0.06), headlight);
-    hr.position.set(-0.55, 0.65, 2.03);
-
-    // Стопы (красные)
-    const stopMat = new THREE.MeshLambertMaterial({ color: 0xff2200, emissive: 0xff0000, emissiveIntensity: 0.3 });
-    this.stopL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.06), stopMat);
-    this.stopR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.06), stopMat);
-    this.stopL.position.set( 0.6, 0.65, -2.03);
-    this.stopR.position.set(-0.6, 0.65, -2.03);
-
-    g.add(carBody, cabin, windshield, hl, hr, this.stopL, this.stopR);
-    return g;
   }
 
-  update(delta, allCars) {
-    if (GS.mode !== 'RIDING') return;
-
-    // Смотрим вперёд — нет ли другой машины
-    const dirs = [
-      new THREE.Vector3( 1, 0,  0),
-      new THREE.Vector3(-1, 0,  0),
-      new THREE.Vector3( 0, 0,  1),
-      new THREE.Vector3( 0, 0, -1),
-    ];
-    const fwd = dirs[this.axis];
-    const ahead = this.mesh.position.clone().addScaledVector(fwd, 5.5);
-
-    this.blocked = false;
-    for (const other of allCars) {
-      if (other === this) continue;
-      if (other.mesh.position.distanceTo(ahead) < 3.2) {
-        this.blocked = true;
-        break;
+  // Roads
+  for (let gy = 0; gy <= C.GH; gy++) {
+    const ry = gy * STEP;
+    for (let ty = 0; ty < C.ROAD; ty++) {
+      for (let x = 0; x < TW; x++) {
+        if (tileMap[ry+ty]) tileMap[ry+ty][x] = { type: 'road' };
       }
     }
-
-    // Инерция: плавное торможение/разгон
-    const accel = this.speed * 1.2;
-    const brake = this.speed * 3.5;
-    if (this.blocked) {
-      this.currentSpeed = Math.max(0, this.currentSpeed - brake * delta);
-    } else {
-      this.currentSpeed = Math.min(this.speed, this.currentSpeed + accel * delta);
-    }
-
-    // Стоп-сигналы
-    const stopping = this.currentSpeed < this.speed * 0.5;
-    const stopEmi  = stopping ? 0.9 : 0.3;
-    if (this.stopL) this.stopL.material.emissiveIntensity = stopEmi;
-    if (this.stopR) this.stopR.material.emissiveIntensity = stopEmi;
-
-    // Движение
-    this.mesh.position.addScaledVector(fwd, this.currentSpeed * delta);
-
-    // Анимация колёс
-    const spin = this.currentSpeed * delta;
-    for (const w of this.wheels) w.rotation.y += spin;
-
-    // Wrap-around
-    const lim = CONFIG.city.gridSize * CONFIG.city.blockSize / 2;
-    const p = this.mesh.position;
-    if (p.x >  lim) p.x = -lim + 2;
-    if (p.x < -lim) p.x =  lim - 2;
-    if (p.z >  lim) p.z = -lim + 2;
-    if (p.z < -lim) p.z =  lim - 2;
   }
-}
-
-class CarSystem {
-  constructor() {
-    this.cars = [];
-    const count = 10 + Math.floor(Math.random() * 6); // 10–15 машин
-    for (let i = 0; i < count; i++) {
-      this.cars.push(new Car());
+  for (let gx = 0; gx <= C.GW; gx++) {
+    const rx = gx * STEP;
+    for (let tx = 0; tx < C.ROAD; tx++) {
+      for (let y = 0; y < TH; y++) {
+        if (tileMap[y] && tileMap[y][rx+tx]) tileMap[y][rx+tx] = { type: 'road' };
+      }
     }
   }
 
-  update(delta) {
-    for (const car of this.cars) car.update(delta, this.cars);
-  }
-}
-
-// ============================================================
-// COP
-// ============================================================
-class Cop {
-  constructor() {
-    this.state     = 'IDLE';   // IDLE | ALERT | CHASING | CAUGHT
-    this.alertTimer  = 0;
-    this.chaseTimer  = 0;
-    this.speed       = 0;
-    this.currentSpeed = 0;
-    this.mesh        = this._buildMesh();
-    // Спавн далеко от игрока
-    this.mesh.position.copy(cityGen.getRandRoadPoint());
-    scene.add(this.mesh);
-    this.mesh.visible = false; // появляется не сразу
-    // Когда появится — случайно через 20–60 сек
-    this.spawnDelay  = 1200 + Math.floor(Math.random() * 2400);
-    this.spawnTimer  = 0;
-    this.warningShown = false;
-  }
-
-  _buildMesh() {
-    const g = new THREE.Group();
-    // Тело — тёмно-синяя форма
-    const body = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.13, 0.11, 0.62, 8),
-      new THREE.MeshLambertMaterial({ color: 0x1a1a5e })
-    );
-    body.position.y = 0.7;
-    // Голова
-    const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.15, 8, 6),
-      new THREE.MeshLambertMaterial({ color: 0xffccaa })
-    );
-    head.position.y = 1.42;
-    // Фуражка (плоский цилиндр + козырёк)
-    const capTop = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.18, 0.18, 0.1, 12),
-      new THREE.MeshLambertMaterial({ color: 0x111155 })
-    );
-    capTop.position.y = 1.62;
-    const capBrim = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.24, 0.24, 0.03, 12),
-      new THREE.MeshLambertMaterial({ color: 0x111155 })
-    );
-    capBrim.position.y = 1.56;
-    // Кокарда — жёлтая точка
-    const badge = new THREE.Mesh(
-      new THREE.SphereGeometry(0.04, 6, 4),
-      new THREE.MeshLambertMaterial({ color: 0xffdd00, emissive: 0xffaa00, emissiveIntensity: 0.6 })
-    );
-    badge.position.set(0, 1.62, 0.19);
-    // Свисток-мигалка над фуражкой (мигает при погоне)
-    this.siren = new THREE.Mesh(
-      new THREE.SphereGeometry(0.06, 6, 4),
-      new THREE.MeshLambertMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1 })
-    );
-    this.siren.position.set(0, 1.75, 0);
-    this.siren.visible = false;
-
-    g.add(body, head, capTop, capBrim, badge, this.siren);
-    return g;
-  }
-
-  update(delta, scPos, scSpeed) {
-    if (GS.mode !== 'RIDING') return;
-
-    // Таймер до появления
-    if (!this.mesh.visible) {
-      this.spawnTimer++;
-      if (this.spawnTimer >= this.spawnDelay) {
-        // Спавн за спиной игрока на расстоянии ~35м
-        const angle = GS.scooter.heading + Math.PI + (Math.random() - 0.5) * 0.8;
-        this.mesh.position.set(
-          scPos.x + Math.sin(angle) * 35,
-          0,
-          scPos.z + Math.cos(angle) * 35
-        );
-        this.mesh.visible = true;
-        this.state = 'ALERT';
-        this.alertTimer = 180; // 3 сек предупреждение
-        this.speed = 4.5 + Math.random() * 3; // 16–27 км/ч
-        if (!this.warningShown) {
-          this.warningShown = true;
-          hudShowFlash('👮 МУС!!! УХОДИ!!!', '#ff0000');
-          this._showCopAlert(true);
+  // Sidewalks (1 tile border around each block)
+  for (let gy = 0; gy < C.GH; gy++) {
+    for (let gx = 0; gx < C.GW; gx++) {
+      const ox = gx * STEP + C.ROAD;
+      const oy = gy * STEP + C.ROAD;
+      for (let ty = 0; ty < C.BLOCK; ty++) {
+        for (let tx = 0; tx < C.BLOCK; tx++) {
+          if (ty === 0 || ty === C.BLOCK-1 || tx === 0 || tx === C.BLOCK-1) {
+            const cell = tileMap[oy+ty] && tileMap[oy+ty][ox+tx];
+            if (cell && cell.type === 'lot') {
+              tileMap[oy+ty][ox+tx] = { type: 'sidewalk' };
+            }
+          }
         }
       }
+    }
+  }
+
+  // Buildings
+  const BLD_TYPES = ['panel','khrush','soviet'];
+  for (let gy = 0; gy < C.GH; gy++) {
+    for (let gx = 0; gx < C.GW; gx++) {
+      // Some blocks have trees/park instead
+      const roll = Math.random();
+      if (roll < 0.15) {
+        // Park / yard with trees
+        const ox = gx * STEP + C.ROAD + 2;
+        const oy = gy * STEP + C.ROAD + 2;
+        const cnt = 2 + Math.floor(Math.random()*4);
+        for (let i = 0; i < cnt; i++) {
+          trees.push({
+            x: (ox + 0.5 + Math.random()*(C.BLOCK-4)) * T,
+            y: (oy + 0.5 + Math.random()*(C.BLOCK-4)) * T,
+            r: 10 + Math.random()*12,
+          });
+        }
+        continue;
+      }
+
+      const ox = gx * STEP + C.ROAD + 1;
+      const oy = gy * STEP + C.ROAD + 1;
+      const bw = (C.BLOCK - 2) * T;
+      const bh = (C.BLOCK - 2) * T;
+      const btype = BLD_TYPES[Math.floor(Math.random()*BLD_TYPES.length)];
+      const floors = 3 + Math.floor(Math.random()*8);
+      const id = buildings.length;
+      buildings.push({
+        x: ox * T, y: oy * T, w: bw, h: bh,
+        type: btype, floors,
+        graffiti: Math.random() < 0.3,
+        stain: Math.random() < 0.45,
+        snow: Math.random() * 0.5 + 0.2,
+        winGrid: Math.floor(Math.random()*4)+2,
+        winLitMap: Array.from({length:floors*8}, () => Math.random() < 0.4),
+      });
+      // mark tiles
+      for (let ty = 0; ty < C.BLOCK-2; ty++) {
+        for (let tx = 0; tx < C.BLOCK-2; tx++) {
+          if (tileMap[oy+ty] && tileMap[oy+ty][ox+tx]) {
+            tileMap[oy+ty][ox+tx] = { type:'building', bldId:id };
+          }
+        }
+      }
+    }
+  }
+
+  // Road graph for NPC routing
+  buildRoadGraph();
+}
+
+// Road graph: horizontal + vertical road center lines
+let roadGraph = { h:[], v:[] };
+function buildRoadGraph() {
+  roadGraph.h = [];
+  roadGraph.v = [];
+  for (let gy = 0; gy <= C.GH; gy++) {
+    const y = (gy * STEP + Math.floor(C.ROAD/2)) * T + T/2;
+    const xMin = Math.floor(C.ROAD/2) * T;
+    const xMax = (C.GW * STEP + Math.floor(C.ROAD/2)) * T;
+    roadGraph.h.push({ y, xMin, xMax });
+  }
+  for (let gx = 0; gx <= C.GW; gx++) {
+    const x = (gx * STEP + Math.floor(C.ROAD/2)) * T + T/2;
+    const yMin = Math.floor(C.ROAD/2) * T;
+    const yMax = (C.GH * STEP + Math.floor(C.ROAD/2)) * T;
+    roadGraph.v.push({ x, yMin, yMax });
+  }
+}
+
+function isRoad(wx, wy) {
+  const tx = Math.floor(wx / T);
+  const ty = Math.floor(wy / T);
+  const row = tileMap[ty];
+  if (!row) return false;
+  const cell = row[tx];
+  return cell && cell.type === 'road';
+}
+
+function isBuilding(wx, wy) {
+  const tx = Math.floor(wx / T);
+  const ty = Math.floor(wy / T);
+  const row = tileMap[ty];
+  if (!row) return false;
+  const cell = row[tx];
+  return cell && cell.type === 'building';
+}
+
+// ─── PLAYER ──────────────────────────────────────────────────────────────────
+const player = {
+  x: 0, y: 0,
+  vx: 0, vy: 0,
+  angle: 0,          // radians, 0 = up
+  speed: 0,
+  boost: 300,
+  boosting: false,
+  integrity: 100,
+  airborne: false,
+  airTime: 0,
+  spinning: false,
+  spinAngle: 0,
+  wheelie: false,
+  wheelieTime: 0,
+  alive: true,
+  // render
+  lean: 0,
+};
+
+function resetPlayer() {
+  // Spawn at center road
+  const cx = Math.floor(C.GW / 2) * STEP + Math.floor(C.ROAD / 2);
+  const cy = Math.floor(C.GH / 2) * STEP + Math.floor(C.ROAD / 2);
+  player.x = (cx + 0.5) * T;
+  player.y = (cy + 0.5) * T;
+  player.vx = 0; player.vy = 0;
+  player.angle = 0;
+  player.speed = 0;
+  player.boost = upStat().boostDur;
+  player.boosting = false;
+  player.integrity = 100;
+  player.airborne = false;
+  player.airTime = 0;
+  player.spinning = false;
+  player.spinAngle = 0;
+  player.wheelie = false;
+  player.wheelieTime = 0;
+  player.alive = true;
+  player.lean = 0;
+}
+
+// ─── INPUT ───────────────────────────────────────────────────────────────────
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Tab') { e.preventDefault(); toggleShop(); }
+  if (e.code === 'KeyF' && GS.mode === 'play') doTrick();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ─── NPCS ────────────────────────────────────────────────────────────────────
+let peds = [], couriers = [], cars = [], cops = [];
+let activeCourier = null;
+
+const COURIER_GRADES = [
+  { name:'Стажёр',  speed:2.2,  color:'#664400', boxColor:'#aa7700', label:'🐢', reward:80  },
+  { name:'Джун',    speed:3.8,  color:'#444488', boxColor:'#6666bb', label:'🚲', reward:150 },
+  { name:'Мидл',    speed:5.2,  color:'#226622', boxColor:'#448844', label:'🛵', reward:240 },
+  { name:'Сеньор',  speed:7.0,  color:'#882222', boxColor:'#cc4444', label:'🔥', reward:400 },
+  { name:'DEMON',   speed:9.5,  color:'#111111', boxColor:'#880000', label:'💀', reward:999 },
+];
+
+function spawnPeds(count) {
+  peds = [];
+  for (let i = 0; i < count; i++) {
+    const rg = roadGraph.h[Math.floor(Math.random()*roadGraph.h.length)];
+    peds.push({
+      x: rg.xMin + Math.random()*(rg.xMax - rg.xMin),
+      y: rg.y + (Math.random()<0.5?-1:1)*(C.ROAD*T/2+12),
+      vx:0, vy:0,
+      angle: Math.random()*Math.PI*2,
+      state:'WALK',
+      timer: 0,
+      scared: false,
+      fled: false,
+    });
+  }
+}
+
+function spawnCouriers(count) {
+  couriers = [];
+  for (let i = 0; i < count; i++) {
+    const grade = COURIER_GRADES[Math.floor(Math.random()*COURIER_GRADES.length)];
+    const rg = roadGraph.h[Math.floor(Math.random()*roadGraph.h.length)];
+    couriers.push({
+      x: rg.xMin + Math.random()*(rg.xMax-rg.xMin),
+      y: rg.y,
+      vx:0, vy:0,
+      angle: Math.random()<0.5 ? 0 : Math.PI,
+      grade,
+      speed:0,
+      targetSpeed: grade.speed,
+      routeAxis:'h',
+      routeIdx: roadGraph.h.indexOf(rg),
+      routeDir: Math.random()<0.5?1:-1,
+      racing: false,
+      raceTimer: 0,
+    });
+  }
+}
+
+function spawnCars(count) {
+  cars = [];
+  for (let i = 0; i < count; i++) {
+    const rg = roadGraph.h[1 + Math.floor(Math.random()*(roadGraph.h.length-2))];
+    const dir = Math.random()<0.5?1:-1;
+    const colors = ['#5a4a3a','#3a3a4e','#4a3a3a','#3e4a3a','#4a4a4a','#5a3a3a'];
+    cars.push({
+      x: rg.xMin + Math.random()*(rg.xMax-rg.xMin),
+      y: rg.y + dir*T*0.4,
+      vx: 0, vy: 0,
+      speed: 0,
+      targetSpeed: 1.4 + Math.random()*1.2,
+      angle: dir > 0 ? Math.PI/2 : -Math.PI/2,
+      dir,
+      routeAxis:'h',
+      routeIdx: roadGraph.h.indexOf(rg),
+      color: colors[Math.floor(Math.random()*colors.length)],
+      w:28, h:18,
+      braking: false,
+    });
+  }
+}
+
+function spawnCop() {
+  const rg = roadGraph.h[Math.floor(Math.random()*roadGraph.h.length)];
+  cops = [{
+    x: rg.xMin + Math.random()*(rg.xMax-rg.xMin),
+    y: rg.y,
+    vx:0, vy:0,
+    angle:0,
+    speed:0,
+    state:'IDLE',
+    sirenTimer:0,
+    catchDist:18,
+    spawnDist: 500,
+  }];
+}
+
+// ─── CRASH SYSTEM ────────────────────────────────────────────────────────────
+let debris = [];
+let crashPhase = null; // null | 'explode' | 'settle' | 'ambulance' | 'scoreboard'
+let crashTimer = 0;
+let crashScore = 0;
+let ambulance = null;
+
+function triggerCrash(impactForce) {
+  if (!player.alive) return;
+  player.alive = false;
+  GS.mode = 'crash';
+  crashPhase = 'explode';
+  crashTimer = 0;
+  crashScore = GS.score + Math.round(impactForce * 8);
+
+  const st = upStat();
+  const parts = st.debrisParts;
+  debris = [];
+  for (let i = 0; i < parts; i++) {
+    const a = (Math.PI*2/parts)*i + (Math.random()-0.5)*0.5;
+    const spd = 2 + Math.random()*4;
+    debris.push({
+      x: player.x, y: player.y,
+      vx: Math.cos(a)*spd*(0.5+Math.random()),
+      vy: Math.sin(a)*spd*(0.5+Math.random()),
+      angle: Math.random()*Math.PI*2,
+      spin: (Math.random()-0.5)*0.3,
+      size: 4 + Math.random()*10,
+      life: 1,
+      decay: 0.008 + Math.random()*0.006,
+      color: ['#888','#aaa','#666','#ffcc00','#ff6600'][Math.floor(Math.random()*5)],
+    });
+  }
+
+  // Screen shake
+  camShake = 18;
+
+  // Spawn ambulance after delay
+  setTimeout(() => {
+    if (GS.mode !== 'crash') return;
+    // Spawn from edge
+    const side = Math.floor(Math.random()*4);
+    let ax,ay,ava;
+    if (side===0){ ax=player.x; ay=0; ava=Math.PI; }
+    else if(side===1){ ax=WORLD_W; ay=player.y; ava=-Math.PI/2; }
+    else if(side===2){ ax=player.x; ay=WORLD_H; ava=0; }
+    else { ax=0; ay=player.y; ava=Math.PI/2; }
+    ambulance = { x:ax, y:ay, vx:0, vy:0, angle:ava, speed:0, state:'APPROACH', timer:0, exploded:false };
+    crashPhase = 'ambulance';
+  }, 2200);
+
+  setTimeout(() => {
+    if (GS.mode === 'crash') showScoreboard();
+  }, 7500);
+}
+
+function showScoreboard() {
+  GS.mode = 'dead';
+  const el = document.getElementById('overlay');
+  el.innerHTML = `
+    <h1>💥 КРАШ!</h1>
+    <p class="subtitle">
+      Итоговый счёт: <strong style="color:#ffcc00;font-size:1.4em">${crashScore}</strong><br>
+      Заработано монет: <strong style="color:#00ffcc">${GS.coins}</strong><br>
+      <br>
+      Апгрейды: Мотор ${UP.motor} | Дека ${UP.deck} | Батарея ${UP.battery} | Колёса ${UP.wheels} | Рама ${UP.frame}
+    </p>
+    <button class="big-btn" onclick="startGame()">🔄 ЕЩЁ РАЗ</button>
+    <button class="big-btn" style="background:#444;color:#ccc;font-size:14px" onclick="resetUpgrades()">Сбросить прокачку</button>
+  `;
+  el.style.display = 'flex';
+}
+
+function resetUpgrades() {
+  UP.motor=0; UP.deck=0; UP.battery=0; UP.wheels=0; UP.frame=0;
+  GS.coins=0; GS.score=0;
+  startGame();
+}
+
+// ─── TRICK SYSTEM ────────────────────────────────────────────────────────────
+let trickCombo = [];
+let comboTimer = 0;
+const COMBO_WINDOW = 180; // frames
+
+function doTrick() {
+  if (!player.alive || GS.mode !== 'play') return;
+  if (player.airborne) {
+    player.spinning = true;
+  } else {
+    player.wheelie = true;
+    player.wheelieTime = 45;
+  }
+}
+
+function registerTrick(name, pts) {
+  GS.score += pts * GS.comboMult;
+  GS.coins += Math.round(pts * 0.3 * GS.comboMult);
+  trickCombo.push(name);
+  comboTimer = COMBO_WINDOW;
+  GS.comboMult = trickCombo.length;
+  GS.bannerText = name + ' +' + (pts*GS.comboMult) + (GS.comboMult>1?' x'+GS.comboMult:'');
+  GS.bannerTimer = 110;
+  updateHUD();
+}
+
+// ─── CAMERA ──────────────────────────────────────────────────────────────────
+let camX = 0, camY = 0, camShake = 0;
+
+function updateCamera() {
+  const tx = player.x - W/2;
+  const ty = player.y - H/2;
+  camX += (tx - camX) * 0.12;
+  camY += (ty - camY) * 0.12;
+  camX = Math.max(0, Math.min(WORLD_W - W, camX));
+  camY = Math.max(0, Math.min(WORLD_H - H, camY));
+  if (camShake > 0) camShake -= 1.5;
+}
+
+// ─── UPDATE ──────────────────────────────────────────────────────────────────
+function updatePlayer(dt) {
+  if (!player.alive) return;
+  const st = upStat();
+
+  const up    = keys['KeyW'] || keys['ArrowUp']    || joyY < -0.3;
+  const down  = keys['KeyS'] || keys['ArrowDown']  || joyY >  0.3;
+  const left  = keys['KeyA'] || keys['ArrowLeft']  || joyX < -0.3;
+  const right = keys['KeyD'] || keys['ArrowRight'] || joyX >  0.3;
+  const boost = (keys['Space'] || mobileBoost) && player.boost > 0;
+
+  // Boost
+  if (boost) {
+    player.boosting = true;
+    player.boost = Math.max(0, player.boost - 1);
+  } else {
+    player.boosting = false;
+    if (player.boost < st.boostDur) player.boost += st.boostRegen * 0.016 * 60;
+  }
+
+  // Turning (speed-dependent)
+  const turnFactor = 1 - Math.abs(player.speed) / (st.topSpeed * 1.8);
+  if (left)  player.angle -= st.turnSpeed * Math.max(0.35, turnFactor);
+  if (right) player.angle += st.turnSpeed * Math.max(0.35, turnFactor);
+
+  // Lean for visual
+  player.lean += ((right ? 1 : left ? -1 : 0) * 0.25 - player.lean) * 0.15;
+
+  // Acceleration
+  const boostMult = player.boosting ? C.BOOST_MULT : 1;
+  if (up)   player.speed += st.accel * boostMult;
+  if (down) player.speed -= st.accel * 0.5;
+
+  // Apply friction
+  player.speed *= st.friction + (player.boosting ? 0.01 : 0);
+  player.speed = Math.max(-st.topSpeed*0.4, Math.min(st.topSpeed * boostMult, player.speed));
+
+  // Move
+  const dx = Math.sin(player.angle) * player.speed;
+  const dy = -Math.cos(player.angle) * player.speed;
+  const nx = player.x + dx;
+  const ny = player.y + dy;
+
+  // Collision
+  const r = 10;
+  let collX = false, collY = false;
+  if (isBuilding(nx, player.y) || nx < r || nx > WORLD_W-r) collX = true;
+  if (isBuilding(player.x, ny) || ny < r || ny > WORLD_H-r) collX = collX || false; // handled below
+  if (isBuilding(player.x, ny) || ny < r || ny > WORLD_H-r) collY = true;
+
+  if (!collX) player.x = nx;
+  if (!collY) player.y = ny;
+
+  if (collX || collY) {
+    const impactSpeed = Math.abs(player.speed);
+    player.speed *= -0.3;
+    if (impactSpeed > C.CRASH_SPD) {
+      player.integrity -= impactSpeed * 8;
+      if (player.integrity <= 0) {
+        triggerCrash(impactSpeed);
+        return;
+      }
+      camShake = Math.min(12, impactSpeed * 1.5);
+    }
+  }
+
+  // Wheelie
+  if (player.wheelie) {
+    player.wheelieTime--;
+    if (player.wheelieTime <= 0) {
+      player.wheelie = false;
+      registerTrick('🤸 ВИЛЛИ', 20 + Math.round(Math.abs(player.speed)*5));
+    }
+  }
+
+  // Vitality
+  const kmh = Math.abs(player.speed) * 3.6 * 3;
+  GS.targetVitality = Math.min(1, kmh / (st.topSpeed * 3.6 * 3 * 0.85));
+  GS.vitality += (GS.targetVitality - GS.vitality) * 0.012;
+
+  // Combo timer
+  if (comboTimer > 0) {
+    comboTimer--;
+    if (comboTimer <= 0) {
+      if (trickCombo.length > 1) {
+        GS.bannerText = '🔥 КОМБО x' + trickCombo.length + '!';
+        GS.bannerTimer = 120;
+      }
+      trickCombo = [];
+      GS.comboMult = 1;
+    }
+  }
+
+  if (GS.bannerTimer > 0) GS.bannerTimer--;
+
+  // Scare pedestrians
+  for (const p of peds) {
+    if (p.state === 'FLEE') continue;
+    const dist = Math.hypot(player.x - p.x, player.y - p.y);
+    if (dist < 50 && Math.abs(player.speed) > 1.5) {
+      const pts = Math.round(C.SCARE_BASE * (1 + Math.abs(player.speed) / 2));
+      GS.score += pts;
+      GS.coins += Math.round(pts * 0.2);
+      GS.bannerText = '😱 ИСПУГ! +' + pts;
+      GS.bannerTimer = 80;
+      p.state = 'FLEE';
+      p.timer = 180;
+      updateHUD();
+    }
+  }
+
+  // Car collision
+  for (const car of cars) {
+    const dist = Math.hypot(player.x - car.x, player.y - car.y);
+    if (dist < 24) {
+      const impact = Math.abs(player.speed) + car.speed;
+      player.integrity -= impact * 5;
+      player.speed *= -0.4;
+      car.speed *= 0.2;
+      camShake = 8;
+      if (player.integrity <= 0) { triggerCrash(impact); return; }
+    }
+  }
+
+  // Cop catch
+  for (const cop of cops) {
+    if (cop.state !== 'CHASE') continue;
+    const dist = Math.hypot(player.x - cop.x, player.y - cop.y);
+    if (dist < cop.catchDist) {
+      triggerCrash(8);
       return;
     }
-
-    const dist = this.mesh.position.distanceTo(scPos);
-
-    if (this.state === 'ALERT') {
-      this.alertTimer--;
-      this.siren.visible = Math.floor(Date.now() / 200) % 2 === 0;
-      if (this.alertTimer <= 0) this.state = 'CHASING';
-    }
-
-    if (this.state === 'CHASING') {
-      this.chaseTimer++;
-      this.siren.visible = Math.floor(Date.now() / 150) % 2 === 0;
-      // Сирена мигает: красный/синий
-      this.siren.material.color.setHex(Math.floor(Date.now() / 150) % 2 === 0 ? 0xff0000 : 0x0000ff);
-      this.siren.material.emissive.setHex(this.siren.material.color.getHex());
-
-      // Инерция — разгоняется
-      this.currentSpeed = Math.min(this.speed, this.currentSpeed + this.speed * 2 * delta);
-
-      // Движение к игроку
-      const dir = new THREE.Vector3().subVectors(scPos, this.mesh.position).setY(0);
-      if (dir.length() > 0.1) {
-        dir.normalize();
-        this.mesh.position.addScaledVector(dir, this.currentSpeed * delta);
-        this.mesh.rotation.y = Math.atan2(dir.x, dir.z);
-      }
-
-      // Поймал!
-      if (dist < 2.0) {
-        this.state = 'CAUGHT';
-        this._onCaught(scPos);
-      }
-
-      // Потерял из виду — отступает (уехал далеко)
-      if (dist > 80) {
-        this.state = 'IDLE';
-        this.mesh.visible = false;
-        this.siren.visible = false;
-        this.spawnTimer = 0;
-        this.spawnDelay = 900 + Math.floor(Math.random() * 1800); // вернётся быстрее
-        this._showCopAlert(false);
-        hudShowFlash('💨 Ушёл от мента!', '#00ff88');
-      }
-    }
-  }
-
-  _onCaught(scPos) {
-    this.siren.visible = false;
-    this._showCopAlert(false);
-    GS.mode = 'CAUGHT';
-    // Показываем экран "поймали"
-    setTimeout(() => showCaughtScreen(), 600);
-  }
-
-  _showCopAlert(show) {
-    const el = document.getElementById('cop-alert');
-    if (el) el.style.display = show ? 'flex' : 'none';
   }
 }
 
-// ============================================================
-// AMBULANCE (появляется после краша)
-// ============================================================
-class Ambulance {
-  constructor() {
-    this.mesh     = null;
-    this.vel      = new THREE.Vector3();
-    this.active   = false;
-    this.exploded = false;
-    this.debrisParts = [];
-    this.sirenL   = null;
-    this.sirenR   = null;
-  }
-
-  spawn(targetPos) {
-    if (this.active) return;
-    this.active   = true;
-    this.exploded = false;
-    this.target   = targetPos.clone();
-
-    // Появляется с края карты со случайной стороны
-    const lim   = CONFIG.city.gridSize * CONFIG.city.blockSize / 2 - 2;
-    const side  = Math.floor(Math.random() * 4);
-    const start = new THREE.Vector3();
-    let heading = 0;
-    if (side === 0) { start.set( lim, 0, targetPos.z); heading = Math.PI / 2 + Math.PI; }
-    if (side === 1) { start.set(-lim, 0, targetPos.z); heading = Math.PI / 2; }
-    if (side === 2) { start.set(targetPos.x, 0,  lim); heading = Math.PI; }
-    if (side === 3) { start.set(targetPos.x, 0, -lim); heading = 0; }
-
-    this.mesh = this._buildMesh();
-    this.mesh.position.copy(start);
-    this.mesh.rotation.y = heading;
-    scene.add(this.mesh);
-
-    // Вектор к цели
-    const dir = new THREE.Vector3().subVectors(targetPos, start).setY(0).normalize();
-    this.vel  = dir.multiplyScalar(28); // ~100 км/ч — летит как сумасшедшая
-  }
-
-  _buildMesh() {
-    const g = new THREE.Group();
-    const white  = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    const yellow = new THREE.MeshLambertMaterial({ color: 0xffdd00 });
-    const dark   = new THREE.MeshLambertMaterial({ color: 0x111111 });
-    const glass  = new THREE.MeshLambertMaterial({ color: 0x88bbdd, transparent: true, opacity: 0.6 });
-    const red    = new THREE.MeshLambertMaterial({ color: 0xff2200 });
-
-    // Кузов — высокий фургон
-    const body = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.0, 4.4), white);
-    body.position.y = 0.65;
-    // Верхняя надстройка
-    const top = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.75, 3.2), white);
-    top.position.y = 1.52;
-    // Жёлтая полоса
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.22, 4.42),
-      new THREE.MeshLambertMaterial({ color: 0xffcc00 }));
-    stripe.position.y = 0.65;
-    // Крест (красный)
-    const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.18), red);
-    const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.6), red);
-    crossH.position.set(0, 1.55, -0.5); crossV.position.set(0, 1.55, -0.5);
-    // Колёса
-    const wgeo = new THREE.CylinderGeometry(0.34, 0.34, 0.24, 12);
-    this.ambWheels = [];
-    for (const [x, y, z] of [[-1.05,0.34,-1.3],[1.05,0.34,-1.3],[-1.05,0.34,1.3],[1.05,0.34,1.3]]) {
-      const w = new THREE.Mesh(wgeo.clone(), dark);
-      w.rotation.z = Math.PI / 2; w.position.set(x, y, z);
-      g.add(w); this.ambWheels.push(w);
-    }
-    // Мигалки (два синих блока на крыше)
-    const sirenGeo = new THREE.BoxGeometry(0.28, 0.18, 0.28);
-    this.sirenL = new THREE.Mesh(sirenGeo, new THREE.MeshLambertMaterial({ color: 0x0044ff, emissive: 0x0022ff, emissiveIntensity: 1 }));
-    this.sirenR = new THREE.Mesh(sirenGeo.clone(), new THREE.MeshLambertMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1 }));
-    this.sirenL.position.set(-0.5, 1.98, 0.4);
-    this.sirenR.position.set( 0.5, 1.98, 0.4);
-    // Фары
-    const hlMat = new THREE.MeshLambertMaterial({ color: 0xffffcc, emissive: 0xffff88, emissiveIntensity: 0.8 });
-    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.18, 0.06), hlMat);
-    hl.position.set(0.6, 0.8, 2.23);
-    const hr = hl.clone(); hr.position.set(-0.6, 0.8, 2.23);
-
-    g.add(body, top, stripe, crossH, crossV, hl, hr, this.sirenL, this.sirenR);
-    return g;
-  }
-
-  update(delta) {
-    if (!this.active || this.exploded) return;
-    if (!this.mesh) return;
-
-    // Мигалки
-    const t = Math.floor(Date.now() / 120) % 2;
-    if (this.sirenL) this.sirenL.material.emissiveIntensity = t ? 1.2 : 0.1;
-    if (this.sirenR) this.sirenR.material.emissiveIntensity = t ? 0.1 : 1.2;
-
-    // Движение
-    this.mesh.position.addScaledVector(this.vel, delta);
-    for (const w of (this.ambWheels || [])) w.rotation.x += this.vel.length() * delta * 0.5;
-
-    // Проверка столкновения с обломками / целью
-    const dist = this.mesh.position.distanceTo(this.target);
-    if (dist < 4) {
-      this._explode();
-    }
-
-    // Выехал за карту без взрыва — убираем
-    const lim = CONFIG.city.gridSize * CONFIG.city.blockSize / 2 + 10;
-    const p = this.mesh.position;
-    if (Math.abs(p.x) > lim || Math.abs(p.z) > lim) {
-      this.active = false;
-      scene.remove(this.mesh);
+function updatePeds() {
+  for (const p of peds) {
+    if (p.state === 'WALK') {
+      p.x += Math.cos(p.angle) * 0.6;
+      p.y += Math.sin(p.angle) * 0.6;
+      p.timer--;
+      if (p.timer <= 0 || Math.random() < 0.01) {
+        p.angle += (Math.random()-0.5)*1.5;
+        p.timer = 60 + Math.floor(Math.random()*120);
+      }
+    } else if (p.state === 'FLEE') {
+      const awayAngle = Math.atan2(p.y - player.y, p.x - player.x);
+      p.x += Math.cos(awayAngle) * 2.5;
+      p.y += Math.sin(awayAngle) * 2.5;
+      p.timer--;
+      if (p.timer <= 0) { p.state = 'WALK'; p.timer = 120; }
     }
   }
+}
 
-  _explode() {
-    if (this.exploded) return;
-    this.exploded = true;
-    const pos = this.mesh.position.clone();
-    scene.remove(this.mesh);
-
-    screenShake(30, 0.5);
-    audioSystem.crash(35);
-
-    // Огненные шары — оранжевые/красные сферы разлетаются
-    const fireMats = [
-      new THREE.MeshLambertMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 1 }),
-      new THREE.MeshLambertMaterial({ color: 0xff8800, emissive: 0xff6600, emissiveIntensity: 1 }),
-      new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 1 }),
-    ];
-    for (let i = 0; i < 22; i++) {
-      const r    = 0.15 + Math.random() * 0.55;
-      const part = new THREE.Mesh(
-        new THREE.SphereGeometry(r, 6, 5),
-        fireMats[i % fireMats.length]
-      );
-      part.position.copy(pos);
-      part.position.y += 0.5;
-      part.userData.vel = new THREE.Vector3(
-        (Math.random() - 0.5) * 18,
-        Math.random() * 14 + 4,
-        (Math.random() - 0.5) * 18
-      );
-      part.userData.angVel = new THREE.Vector3(
-        (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 10
-      );
-      part.userData.life = 120 + Math.floor(Math.random() * 80);
-      scene.add(part);
-      this.debrisParts.push(part);
+function updateCouriers() {
+  for (const c of couriers) {
+    // Simple straight-road movement
+    const rg = roadGraph.h[c.routeIdx];
+    if (!rg) continue;
+    c.y += (rg.y - c.y) * 0.08;
+    c.speed += (c.targetSpeed - c.speed) * 0.05;
+    c.x += Math.cos(c.angle) * c.speed;
+    if (c.x > rg.xMax - T) {
+      c.routeDir = -1;
+      c.angle = Math.PI + Math.PI/2;
     }
-
-    hudShowFlash('💥 СКОРАЯ ПРИЕХАЛА!', '#ff4400');
+    if (c.x < rg.xMin + T) {
+      c.routeDir = 1;
+      c.angle = Math.PI/2;
+    }
+    c.x += c.routeDir * 0.01; // ensure movement dir
+    // Occasionally switch road
+    if (Math.random() < 0.002) {
+      const ni = Math.floor(Math.random()*roadGraph.h.length);
+      c.routeIdx = ni;
+    }
   }
+}
 
-  updateDebris(delta) {
-    for (let i = this.debrisParts.length - 1; i >= 0; i--) {
-      const p = this.debrisParts[i];
-      p.userData.life--;
-      // Затухание
-      const lifeFrac = p.userData.life / 200;
-      p.material.emissiveIntensity = lifeFrac * 1.2;
-      p.scale.setScalar(0.3 + lifeFrac * 0.7);
+function updateCars() {
+  for (const car of cars) {
+    const rg = roadGraph.h[car.routeIdx];
+    if (!rg) continue;
+    car.y += (rg.y + car.dir * T * 0.4 - car.y) * 0.06;
 
-      const v  = p.userData.vel;
-      const av = p.userData.angVel;
-      v.y += CONFIG.physics.gravity * delta;
-      p.position.addScaledVector(v, delta);
-      p.rotation.x += av.x * delta;
-      p.rotation.y += av.y * delta;
-      p.rotation.z += av.z * delta;
-      av.multiplyScalar(0.95);
-      if (p.position.y < 0.1) { p.position.y = 0.1; v.y = Math.abs(v.y) * 0.2; v.x *= 0.8; v.z *= 0.8; }
-
-      if (p.userData.life <= 0) {
-        scene.remove(p);
-        this.debrisParts.splice(i, 1);
+    // Look-ahead
+    const lookDist = 48;
+    let blocked = false;
+    const lookX = car.x + car.dir * lookDist;
+    for (const other of cars) {
+      if (other === car) continue;
+      if (Math.abs(other.y - car.y) < 20 && Math.abs(other.x - lookX) < 32 && Math.sign(other.x - car.x) === car.dir) {
+        blocked = true; break;
       }
     }
-  }
+    // Player look
+    if (Math.abs(player.y - car.y) < 20 && Math.abs(player.x - lookX) < 30 && Math.sign(player.x - car.x) === car.dir) {
+      blocked = true;
+    }
 
-  reset() {
-    if (this.mesh) scene.remove(this.mesh);
-    for (const p of this.debrisParts) scene.remove(p);
-    this.debrisParts = [];
-    this.active   = false;
-    this.exploded = false;
-    this.mesh     = null;
+    car.braking = blocked;
+    const ts = blocked ? 0 : car.targetSpeed;
+    car.speed += (ts - car.speed) * 0.08;
+    car.x += car.dir * car.speed;
+
+    // Wrap
+    if (car.x > rg.xMax) car.x = rg.xMin;
+    if (car.x < rg.xMin) car.x = rg.xMax;
+
+    // Switch road occasionally
+    if (Math.random() < 0.001) {
+      const ni = 1 + Math.floor(Math.random()*(roadGraph.h.length-2));
+      car.routeIdx = ni;
+      car.dir = Math.random()<0.5?1:-1;
+      car.angle = car.dir > 0 ? Math.PI/2 : -Math.PI/2;
+    }
   }
 }
 
-class NPCSystem {
-  constructor() {
-    this.peds     = [];
-    this.couriers = [];
-    this.carSystem = new CarSystem();
-    this.cop = new Cop();
-    this._spawn();
-  }
-
-  _spawn() {
-    const sp = cityGen.spawnPts;
-    for (let i = 0; i < CONFIG.npc.pedCount; i++) {
-      const base = sp[i % sp.length].clone();
-      base.x += (Math.random() - 0.5) * 3;
-      base.z += (Math.random() - 0.5) * 3;
-      this.peds.push(new Pedestrian(base));
-    }
-    for (let i = 0; i < COURIER_GRADES.length; i++) {
-      this.couriers.push(new Courier(i));
-    }
-  }
-
-  update(delta) {
-    const sc = GS.scooter;
-    this.carSystem.update(delta);
-    const cars = this.carSystem.cars;
-    for (const p of this.peds)     p.update(delta, sc.pos, sc.speed);
-    for (const c of this.couriers) c.update(delta, sc.pos, sc.speed, cars);
-    this.cop.update(delta, sc.pos, sc.speed);
-  }
-}
-
-// ============================================================
-// TRICK SYSTEM
-// ============================================================
-class TrickSystem {
-  constructor() {
-    this.combo      = [];
-    this.comboTimer = 0;
-    this.WINDOW     = 190;
-  }
-
-  onWheelie(frames) {
-    if (frames === 55) this._reg('ВИЛЛИ! 🛴', 30);
-    if (frames > 55 && frames % 60 === 0) {
-      this._reg(`ВИЛЛИ ${((frames - 55) / 60 + 1).toFixed(0)}сек!`, 18);
-    }
-    GS.score += CONFIG.scoring.wheeliePerFrame * GS.timeScale;
-  }
-
-  onLand(airFrames, spinDeg, spd) {
-    if (airFrames < 6) return;
-    this._reg('ПРЫЖОК!', CONFIG.scoring.jump);
-    const abs = Math.abs(spinDeg);
-    if      (abs >= 360) this._reg('360°! 🌀', CONFIG.scoring.spin360);
-    else if (abs >= 180) this._reg('180°!', CONFIG.scoring.spin180);
-    if (airFrames > 80)  this._reg('BIG AIR 🚀', CONFIG.scoring.bigAir);
-    // Hard landing damage
-    if (spd > 8) { GS.scooter.hp -= 5; GS.scooter.hp = Math.max(0, GS.scooter.hp); }
-  }
-
-  _reg(name, pts) {
-    this.comboTimer = this.WINDOW;
-    this.combo.push(name);
-    const mult   = Math.max(1, this.combo.length - 1);
-    const earned = Math.round(pts * mult);
-    GS.score  += earned;
-    GS.points += earned;
-    if (!GS.dmg.tricks.includes(name)) GS.dmg.tricks.push(name);
-    hudTrickBanner(this.combo, mult, earned);
-  }
-
-  update() {
-    if (this.comboTimer > 0) {
-      this.comboTimer--;
-      if (this.combo.length > 0) {
-        const el = document.getElementById('combo-display');
-        if (el) { el.style.display = 'block'; document.getElementById('combo-mult').textContent = Math.max(1, this.combo.length - 1); }
+function updateCops() {
+  for (const cop of cops) {
+    const dist = Math.hypot(player.x - cop.x, player.y - cop.y);
+    if (cop.state === 'IDLE') {
+      if (dist < cop.spawnDist && Math.abs(player.speed) > 3) {
+        cop.state = 'CHASE';
+        GS.bannerText = '🚔 МЕНТ! УХОДИ!';
+        GS.bannerTimer = 120;
       }
-    } else if (this.combo.length > 0) {
-      this.combo = [];
-      const el = document.getElementById('combo-display');
-      if (el) el.style.display = 'none';
+    } else if (cop.state === 'CHASE') {
+      const chase = 4.5 + UP.motor * 0.2;
+      const a = Math.atan2(player.y - cop.y, player.x - cop.x);
+      cop.x += Math.cos(a) * chase;
+      cop.y += Math.sin(a) * chase;
+      cop.angle = a + Math.PI/2;
+      cop.sirenTimer++;
     }
   }
 }
 
-// ============================================================
-// CRASH SYSTEM
-// ============================================================
-class CrashSystem {
-  constructor() {
-    this.phase   = 'NONE';
-    this.timer   = 0;
-    this.debris  = [];
-    this.rBody   = null;
-    this.rHead   = null;
+function updateDebris() {
+  for (const d of debris) {
+    d.x += d.vx;
+    d.y += d.vy;
+    d.vx *= 0.94;
+    d.vy *= 0.94;
+    d.angle += d.spin;
+    d.spin *= 0.96;
+    d.life -= d.decay;
   }
+  debris = debris.filter(d => d.life > 0);
+}
 
-  trigger(speed, pos) {
-    if (this.phase !== 'NONE') return;
-    GS.mode = 'CRASH';
-    this.phase = 'IMPACT';
-    this.timer = 0;
-    GS.timeScale = 0.13;
-
-    const stats       = getStats();
-    const impactForce = speed * stats.crashMult;
-    GS.dmg.impactForce = impactForce;
-    GS.dmg.finalScore  = GS.score + Math.round(impactForce * CONFIG.scoring.crashPerForce);
-
-    // Hide scooter
-    scooterCtrl.mesh.visible = false;
-
-    this._explodeScooter(pos, speed, stats.partCount);
-    this._launchRider(pos, speed);
-    camSystem.startCrashCam(pos);
-    audioSystem.crash(impactForce);
-
-    // Screen shake via camera
-    screenShake(20, 0.28);
-  }
-
-  _explodeScooter(pos, speed, partCount) {
-    const mats = [
-      new THREE.MeshLambertMaterial({ color: 0x1155ff }),
-      new THREE.MeshLambertMaterial({ color: 0x222222 }),
-      new THREE.MeshLambertMaterial({ color: 0x111111 }),
-      new THREE.MeshLambertMaterial({ color: 0x00ddcc }),
-      new THREE.MeshLambertMaterial({ color: 0x888888 }),
-    ];
-    const geos = [
-      new THREE.BoxGeometry(0.22, 0.07, 0.95),
-      new THREE.CylinderGeometry(0.028, 0.028, 0.85, 6),
-      new THREE.CylinderGeometry(0.018, 0.018, 0.52, 6),
-      new THREE.CylinderGeometry(0.12, 0.12, 0.055, 10),
-      new THREE.BoxGeometry(0.15, 0.06, 0.25),
-    ];
-
-    for (let i = 0; i < partCount; i++) {
-      const geo = geos[i % geos.length].clone();
-      const mat = mats[i % mats.length];
-      const part = new THREE.Mesh(geo, mat);
-      part.position.set(
-        pos.x + (Math.random() - 0.5) * 0.5,
-        pos.y + 0.2 + Math.random() * 0.3,
-        pos.z + (Math.random() - 0.5) * 0.5
-      );
-      part.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      const f = speed * 0.4;
-      part.userData.vel = new THREE.Vector3(
-        (Math.random() - 0.5) * f,
-        Math.random() * f * 0.6 + 2,
-        (Math.random() - 0.5) * f
-      );
-      part.userData.angVel = new THREE.Vector3(
-        (Math.random() - 0.5) * 9,
-        (Math.random() - 0.5) * 9,
-        (Math.random() - 0.5) * 9
-      );
-      scene.add(part);
-      this.debris.push(part);
-    }
-  }
-
-  _launchRider(pos, speed) {
-    const sc = GS.scooter;
-    const bodyMat = new THREE.MeshLambertMaterial({ color: 0xff5500 });
-    const headMat = new THREE.MeshLambertMaterial({ color: 0xffcc99 });
-    this.rBody = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.58, 7), bodyMat);
-    this.rHead = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), headMat);
-    this.rBody.position.set(pos.x, pos.y + 0.6, pos.z);
-    this.rHead.position.set(pos.x, pos.y + 1.1, pos.z);
-    const fwd = new THREE.Vector3(Math.sin(sc.heading), 0, Math.cos(sc.heading));
-    const lv = fwd.clone().multiplyScalar(speed * 0.65).add(new THREE.Vector3(0, speed * 0.55, 0));
-    this.rBody.userData.vel = lv.clone();
-    this.rHead.userData.vel = lv.clone().add(new THREE.Vector3((Math.random() - 0.5) * 4, 1.5 + Math.random() * 2, (Math.random() - 0.5) * 4));
-    this.rBody.userData.angVel = new THREE.Vector3((Math.random()-0.5)*6, (Math.random()-0.5)*6, (Math.random()-0.5)*6);
-    this.rHead.userData.angVel = new THREE.Vector3((Math.random()-0.5)*8, (Math.random()-0.5)*8, (Math.random()-0.5)*8);
-    scene.add(this.rBody);
-    scene.add(this.rHead);
-  }
-
-  update(delta) {
-    if (this.phase === 'NONE') return;
-    this.timer++;
-
-    const allParts = [...this.debris, this.rBody, this.rHead].filter(Boolean);
-    const scaledDelta = delta * (GS.timeScale < 1 ? 1 : 1); // always real delta for debris
-
-    for (const p of allParts) {
-      const v = p.userData.vel;
-      if (!v) continue;
-      v.y += CONFIG.physics.gravity * delta;
-      p.position.x += v.x * delta;
-      p.position.y += v.y * delta;
-      p.position.z += v.z * delta;
-      const av = p.userData.angVel;
-      if (av) {
-        p.rotation.x += av.x * delta;
-        p.rotation.y += av.y * delta;
-        p.rotation.z += av.z * delta;
-        av.multiplyScalar(CONFIG.physics.angDamp);
-      }
-      if (p.position.y < 0.04) {
-        p.position.y = 0.04;
-        v.y = Math.abs(v.y) * CONFIG.physics.bounceDamp;
-        v.x *= CONFIG.physics.debrisFriction;
-        v.z *= CONFIG.physics.debrisFriction;
+function updateAmbulance() {
+  if (!ambulance) return;
+  if (ambulance.state === 'APPROACH') {
+    const a = Math.atan2(player.y - ambulance.y, player.x - ambulance.x);
+    ambulance.speed += (6 - ambulance.speed) * 0.06;
+    ambulance.x += Math.cos(a) * ambulance.speed;
+    ambulance.y += Math.sin(a) * ambulance.speed;
+    ambulance.angle = a + Math.PI/2;
+    const dist = Math.hypot(player.x - ambulance.x, player.y - ambulance.y);
+    if (dist < 30) {
+      ambulance.state = 'EXPLODE';
+      ambulance.timer = 60;
+      camShake = 25;
+      // Extra debris
+      for (let i = 0; i < 12; i++) {
+        const ba = Math.random()*Math.PI*2;
+        const bs = 3 + Math.random()*6;
+        debris.push({
+          x: ambulance.x, y: ambulance.y,
+          vx: Math.cos(ba)*bs, vy: Math.sin(ba)*bs,
+          angle:0, spin:(Math.random()-0.5)*0.4,
+          size:6+Math.random()*14, life:1, decay:0.012,
+          color:['#ff4400','#ffaa00','#fff','#ff0000','#ff6600'][Math.floor(Math.random()*5)],
+        });
       }
     }
-
-    if (this.phase === 'IMPACT' && this.timer > 28) {
-      this.phase = 'RAGDOLL';
-      GS.timeScale = 0.38;
-    }
-    if (this.phase === 'RAGDOLL' && this.timer > 170) {
-      this.phase = 'SETTLE';
-      GS.timeScale = 1.0;
-    }
-    if (this.phase === 'SETTLE') {
-      const still = allParts.every(p => !p.userData.vel || p.userData.vel.length() < 0.06);
-      if (still || this.timer > 420) {
-        this.phase = 'AMBULANCE';
-        this.timer = 0;
-        // Спавним скорую через 1.5 сек после того как всё осело
-        setTimeout(() => {
-          if (ambulance) ambulance.spawn(GS.scooter.pos);
-        }, 1500);
-      }
-    }
-    if (this.phase === 'AMBULANCE') {
-      if (ambulance) {
-        ambulance.update(rawDelta || delta);
-        ambulance.updateDebris(rawDelta || delta);
-      }
-      this.timer++;
-      // Финальный экран — через 7 сек после фазы AMBULANCE
-      if (this.timer > 420) {
-        this.phase = 'DONE';
-        setTimeout(() => showCrashScreen(), 400);
-      }
-    }
-  }
-
-  reset() {
-    for (const p of this.debris) scene.remove(p);
-    this.debris = [];
-    if (this.rBody) { scene.remove(this.rBody); this.rBody = null; }
-    if (this.rHead) { scene.remove(this.rHead); this.rHead = null; }
-    this.phase = 'NONE';
-    this.timer = 0;
+  } else if (ambulance.state === 'EXPLODE') {
+    ambulance.timer--;
+    if (ambulance.timer <= 0) ambulance = null;
   }
 }
 
-// ============================================================
-// SHOP SYSTEM
-// ============================================================
-class ShopSystem {
-  constructor() {
-    this.defs = [
-      {
-        id: 'motor', icon: '⚡', name: 'Мотор Оверклок',
-        costs: [80, 160, 320, 640, 1280],
-        maxLevel: 5,
-        desc: [
-          'Штатный мотор. 15 км/ч. Безопасно.',
-          '+30% скорости. Уже что-то.',
-          'Свистит на максималке.',
-          'Голуби разлетаются при запуске.',
-          'Слышно за 200м. Полиция начинает замечать.',
-          'НЕЛЕГАЛЬНО. 90 км/ч. Чистый хаос. 🔥'
-        ]
-      },
-      {
-        id: 'deck', icon: '🛹', name: 'Гоночная Дека',
-        costs: [60, 120, 240, 480, 960],
-        maxLevel: 5,
-        desc: [
-          'Штатная дека. Рулится как тележка в АШАН.',
-          'Немного лучше.',
-          'Нормальный grip tape.',
-          'Можно нарезать углы.',
-          'Корнеринг банковского уровня.',
-          'Телекинетическое управление. Думаешь — едет.'
-        ]
-      },
-      {
-        id: 'battery', icon: '🔋', name: 'Турбо АКБ',
-        costs: [50, 100, 200, 400, 800],
-        maxLevel: 5,
-        desc: [
-          '3 секунды буста. Грустно.',
-          '6 сек. Получше.',
-          '10 сек. Достойно.',
-          '15 сек + быстрая перезарядка.',
-          '20 сек непрерывного буста.',
-          '30 сек НИТРО. Это не предусмотрено конструкцией.'
-        ]
-      },
-      {
-        id: 'wheels', icon: '🏎️', name: 'Дрифт Колёса',
-        costs: [70, 140, 280, 560, 1120],
-        maxLevel: 5,
-        desc: [
-          'Штатная резина. Скучно.',
-          'Немного скользят.',
-          'Весёлые дрифты в поворотах.',
-          'Намеренный занос.',
-          'Едешь боком хочешь или нет.',
-          'Лёд. Дрифтуй или умирай. Середины нет.'
-        ]
-      },
-      {
-        id: 'frame', icon: '💥', name: 'Краш-Спектакль Рама',
-        costs: [90, 180, 360, 720, 1440],
-        maxLevel: 5,
-        desc: [
-          'Штатная рама. Скучный краш. 3 куска.',
-          'Немного предварительно ослаблена. 5 кусков.',
-          'Стратегически хрупкая. 7 кусков.',
-          'Разлетается красиво. 9 кусков.',
-          'Режим конфетти. 11 кусков.',
-          'МАКСИМАЛЬНЫЙ КАРНАЖ. 13 кусков. Слоу-мо гарантировано. 💀'
-        ]
-      },
-    ];
-  }
-
-  buy(id) {
-    const d   = this.defs.find(x => x.id === id);
-    const lvl = GS.scooter.upgrades[id];
-    if (lvl >= d.maxLevel) { hudShowFlash('МАКСИМУМ!', '#ffaa00'); return; }
-    const cost = d.costs[lvl];
-    if (GS.points < cost) { hudShowFlash('МАЛО ОЧКОВ!', '#ff0000'); return; }
-    GS.points -= cost;
-    GS.scooter.upgrades[id]++;
-    // refill boost on battery upgrade
-    if (id === 'battery') GS.scooter.boostLeft = getStats().boostMax;
-    renderShop();
-    hudShowFlash(`${d.icon} ${d.name} → ур.${GS.scooter.upgrades[id]}!`, '#00ff88');
-  }
-}
-
-function renderShop() {
-  const el = document.getElementById('shop-items');
-  if (!el) return;
-  document.getElementById('shop-pts').textContent = GS.points;
-  el.innerHTML = shopSystem.defs.map(d => {
-    const lvl  = GS.scooter.upgrades[d.id];
-    const max  = d.maxLevel;
-    const cost = lvl < max ? d.costs[lvl] : null;
-    const bars = '█'.repeat(lvl) + '░'.repeat(max - lvl);
-    const canBuy = cost !== null && GS.points >= cost;
-    return `<div class="shop-item">
-      <div class="shop-icon">${d.icon}</div>
-      <div class="shop-info">
-        <div class="shop-name">${d.name}</div>
-        <div class="shop-desc">${d.desc[lvl]}</div>
-        <div class="shop-bar">${bars}</div>
-      </div>
-      <button class="shop-btn${lvl >= max ? ' maxed' : ''}"
-        onclick="shopSystem.buy('${d.id}')">
-        ${lvl >= max ? '✅ МАХ' : `🪙 ${cost}`}
-      </button>
-    </div>`;
-  }).join('');
-}
-
-// ============================================================
-// CAMERA SYSTEM
-// ============================================================
-class CameraSystem {
-  constructor() {
-    this.mode = 'FOLLOW';
-    this.crashTarget = new THREE.Vector3();
-    this.orbitAngle  = 0;
-    this.shakeFrames = 0;
-    this.shakeAmp    = 0;
-  }
-
-  update(delta) {
-    const sc = GS.scooter;
-    if (this.mode === 'FOLLOW') {
-      const sinH = Math.sin(sc.heading), cosH = Math.cos(sc.heading);
-      const stats = getStats();
-      // Dynamic FOV
-      camera.fov = 60 + sc.speed * 1.6;
-      camera.updateProjectionMatrix();
-
-      const ideal = new THREE.Vector3(
-        sc.pos.x + sinH * 7.5,
-        sc.pos.y + 3.8,
-        sc.pos.z + cosH * 7.5
-      );
-      camera.position.lerp(ideal, 0.09);
-      const lookAt = new THREE.Vector3(sc.pos.x - sinH * 3.5, sc.pos.y + 0.8, sc.pos.z - cosH * 3.5);
-      camera.lookAt(lookAt);
-    } else if (this.mode === 'CRASH') {
-      this.orbitAngle += delta * 0.75;
-      const r = 9;
-      camera.position.set(
-        this.crashTarget.x + Math.sin(this.orbitAngle) * r,
-        this.crashTarget.y + 4.5,
-        this.crashTarget.z + Math.cos(this.orbitAngle) * r
-      );
-      camera.lookAt(this.crashTarget.x, this.crashTarget.y + 0.5, this.crashTarget.z);
-      camera.fov = 44;
-      camera.updateProjectionMatrix();
-    }
-
-    // Shake
-    if (this.shakeFrames > 0) {
-      this.shakeFrames--;
-      const a = this.shakeAmp * (this.shakeFrames / 20);
-      camera.position.x += (Math.random() - 0.5) * a;
-      camera.position.y += (Math.random() - 0.5) * a;
-    }
-  }
-
-  startCrashCam(pos) {
-    this.mode = 'CRASH';
-    this.crashTarget.copy(pos);
-  }
-}
-
-function screenShake(frames, amp) {
-  camSystem.shakeFrames = frames;
-  camSystem.shakeAmp    = amp;
-}
-
-// ============================================================
-// AUDIO SYSTEM
-// ============================================================
-class AudioSystem {
-  constructor() {
-    try {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-      this.motorOsc  = this.ctx.createOscillator();
-      this.motorGain = this.ctx.createGain();
-      this.motorOsc.type = 'sawtooth';
-      this.motorOsc.frequency.value = 60;
-      this.motorGain.gain.value = 0;
-      this.motorOsc.connect(this.motorGain);
-      this.motorGain.connect(this.ctx.destination);
-      this.motorOsc.start();
-    } catch(e) { this.ctx = null; }
-  }
-
-  updateMotor(speed, topSpeed) {
-    if (!this.ctx) return;
-    const t = this.ctx.currentTime;
-    const ratio = Math.max(0, speed) / (topSpeed + 0.001);
-    this.motorOsc.frequency.setTargetAtTime(55 + ratio * 360, t, 0.08);
-    this.motorGain.gain.setTargetAtTime(speed > 0.3 ? 0.07 : 0, t, 0.1);
-  }
-
-  crash(force) {
-    if (!this.ctx) return;
-    const dur = 0.6;
-    const buf = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * dur), this.ctx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
-    const src = this.ctx.createBufferSource();
-    const g   = this.ctx.createGain();
-    src.buffer = buf;
-    g.gain.value = Math.min(force * 0.04, 0.9);
-    src.connect(g); g.connect(this.ctx.destination);
-    src.start();
-    // Kill motor
-    this.motorGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
-  }
-}
-
-// ============================================================
-// HUD HELPERS
-// ============================================================
-let flashTimeout = null;
-const flashEl = document.createElement('div');
-flashEl.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:48px;font-weight:bold;color:#fff;text-shadow:0 0 20px currentColor;pointer-events:none;z-index:50;opacity:0;transition:opacity 0.2s;';
-document.body.appendChild(flashEl);
-
-function hudShowFlash(text, color) {
-  flashEl.textContent = text;
-  flashEl.style.color = color || '#fff';
-  flashEl.style.opacity = '1';
-  clearTimeout(flashTimeout);
-  flashTimeout = setTimeout(() => { flashEl.style.opacity = '0'; }, 800);
-}
-
-function hudPopup(text, pos3d) {
-  const el = document.createElement('div');
-  el.className = 'popup';
-  el.textContent = text;
-  // Project 3D position to screen
-  const v = pos3d.clone().project(camera);
-  const x = (v.x * 0.5 + 0.5) * window.innerWidth;
-  const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
-  el.style.left = Math.max(10, Math.min(window.innerWidth - 120, x)) + 'px';
-  el.style.top  = Math.max(10, Math.min(window.innerHeight - 80, y)) + 'px';
-  document.getElementById('popup-container').appendChild(el);
-  setTimeout(() => el.remove(), 1500);
-}
-
-let trickBannerTimeout = null;
-function hudTrickBanner(combo, mult, earned) {
-  const el = document.getElementById('trick-banner');
-  if (!el) return;
-  el.innerHTML = combo.slice(-2).join(' + ') + (mult > 1 ? ` × ${mult}` : '') + `<br><span style="font-size:24px;color:#ffcc00">+${earned} 🪙</span>`;
-  el.style.opacity = '1';
-  clearTimeout(trickBannerTimeout);
-  trickBannerTimeout = setTimeout(() => { el.style.opacity = '0'; }, 2000);
-}
-
-function hudShowRaceBanner(show) {
-  const el = document.getElementById('race-banner');
-  if (el) el.style.display = show ? 'block' : 'none';
-}
-
+// ─── HUD ─────────────────────────────────────────────────────────────────────
 function updateHUD() {
-  const sc    = GS.scooter;
-  const stats = getStats();
-  document.getElementById('speed-value').textContent   = Math.round(Math.abs(sc.speed) * 3.6);
-  document.getElementById('score-display').textContent = Math.round(GS.score);
-  document.getElementById('points-display').textContent = Math.round(GS.points);
+  const st = upStat();
+  const kmh = Math.round(Math.abs(player.speed) * 3.6 * 3);
+  document.getElementById('speed-value').textContent = kmh;
+  document.getElementById('coins').textContent = GS.coins;
+  document.getElementById('score').textContent = GS.score;
+  document.getElementById('boost-fill').style.width = (player.boost / st.boostDur * 100) + '%';
+  document.getElementById('integrity-fill').style.width = Math.max(0,player.integrity) + '%';
 
-  const boostPct = (sc.boostLeft / stats.boostMax) * 100;
-  document.getElementById('boost-fill').style.width = boostPct + '%';
+  const banner = document.getElementById('trick-banner');
+  if (GS.bannerTimer > 0) {
+    banner.textContent = GS.bannerText;
+    banner.style.opacity = Math.min(1, GS.bannerTimer / 30);
+  } else {
+    banner.style.opacity = 0;
+  }
 
-  const hpPct = sc.hp;
-  const hpEl  = document.getElementById('integrity-fill');
-  hpEl.style.width = hpPct + '%';
-  hpEl.style.background = hpPct > 50 ? 'linear-gradient(90deg,#ff0,#0f0)' : hpPct > 25 ? '#ff8800' : '#ff0000';
-
-  const speedColor = sc.speed * 3.6 > 50 ? '#ff4444' : sc.speed * 3.6 > 25 ? '#ffaa00' : '#00ffcc';
-  document.getElementById('speed-value').style.color = speedColor;
+  const cd = document.getElementById('combo-display');
+  if (GS.comboMult > 1) {
+    cd.style.display='block';
+    document.getElementById('combo-mult').textContent = GS.comboMult;
+  } else {
+    cd.style.display='none';
+  }
 }
 
-// ============================================================
-// CRASH SCREEN
-// ============================================================
-function showCrashScreen() {
-  const screen = document.getElementById('crash-screen');
-  const report = document.getElementById('damage-report');
-  const d = GS.dmg;
-  const subtitles = [
-    'Страховки нет. Удачи.',
-    'Whoosh просит вернуть то, что осталось.',
-    'Яндекс.Скорая уже едет.',
-    'Это называется "городская мобильность"?',
-    'Ну и как тебя вообще выпускают на улицу?',
-    'Достижение разблокировано: "Полёт без крыльев"',
-  ];
-  document.getElementById('crash-subtitle').textContent =
-    subtitles[Math.floor(Math.random() * subtitles.length)];
+// ─── DRAW ─────────────────────────────────────────────────────────────────────
+function draw() {
+  const v = GS.vitality;
+  ctx.clearRect(0,0,W,H);
 
-  const tricksStr = d.tricks.length ? d.tricks.join(', ') : '—';
-  const ridingScore = GS.score - Math.round(d.impactForce * CONFIG.scoring.crashPerForce);
-  const crashBonus  = Math.round(d.impactForce * CONFIG.scoring.crashPerForce);
+  const sx = Math.round(camX + (camShake>0?(Math.random()-0.5)*camShake*2:0));
+  const sy = Math.round(camY + (camShake>0?(Math.random()-0.5)*camShake*2:0));
 
-  report.innerHTML = `
-    <div class="report-line"><span>🏎️ Макс. скорость</span><span class="report-val">${Math.round(d.maxSpeed)} км/ч</span></div>
-    <div class="report-line"><span>💪 Сила удара</span><span class="report-val">${d.impactForce.toFixed(1)}</span></div>
-    <div class="report-line"><span>🧱 Столкновений</span><span class="report-val">${d.hitsCount}</span></div>
-    <div class="report-line"><span>😱 Напуганных</span><span class="report-val">${d.pedScared}</span></div>
-    <div class="report-line"><span>🛹 Трюки</span><span class="report-val" style="font-size:14px;max-width:180px;text-align:right">${tricksStr}</span></div>
-    <div class="report-line"><span>🔧 Кусков самоката</span><span class="report-val">${getStats().partCount}</span></div>
-    <div class="report-line"><span>⭐ Очки за езду</span><span class="report-val">${Math.max(0, ridingScore)}</span></div>
-    <div class="report-line"><span>💥 Бонус краша</span><span class="report-val">+${crashBonus}</span></div>
-    <div class="report-line" id="total-score-line"><span>🏆 ИТОГО</span><span class="report-val">${d.finalScore}</span></div>
-  `;
+  ctx.save();
+  ctx.translate(-sx, -sy);
 
-  screen.style.display = 'flex';
+  drawWorld(v, sx, sy);
+  drawTrees(v);
+  drawBuildings(v);
+  drawCars(v);
+  drawCouriers(v);
+  drawPeds(v);
+  drawCops(v);
+  drawDebris();
+  if (ambulance) drawAmbulance(v);
+  drawPlayer(v);
+
+  ctx.restore();
 }
 
-// ============================================================
-// SHOP UI
-// ============================================================
+function drawWorld(v, sx, sy) {
+  // Background tiles — only draw visible area
+  const TW = C.GW * STEP + C.ROAD;
+  const TH = C.GH * STEP + C.ROAD;
+  const txMin = Math.max(0, Math.floor(sx / T) - 1);
+  const txMax = Math.min(TW-1, Math.ceil((sx+W) / T) + 1);
+  const tyMin = Math.max(0, Math.floor(sy / T) - 1);
+  const tyMax = Math.min(TH-1, Math.ceil((sy+H) / T) + 1);
+
+  for (let ty = tyMin; ty <= tyMax; ty++) {
+    for (let tx = txMin; tx <= txMax; tx++) {
+      const cell = tileMap[ty] && tileMap[ty][tx];
+      if (!cell) continue;
+      const px = tx * T, py = ty * T;
+      let c;
+      switch(cell.type) {
+        case 'road':     c = col('asphalt', v); break;
+        case 'sidewalk': c = col('sidewalk', v); break;
+        case 'lot':      c = col('grass', v); break;
+        case 'building': continue; // drawn separately
+        default:         c = col('grass', v);
+      }
+      ctx.fillStyle = c;
+      ctx.fillRect(px, py, T+1, T+1);
+
+      // Road dashes
+      if (cell.type === 'road') {
+        const isH = tileMap[ty-1] && tileMap[ty-1][tx] && tileMap[ty-1][tx].type === 'road';
+        const isV = tileMap[ty] && tileMap[ty][tx-1] && tileMap[ty][tx-1].type === 'road';
+        // Center line dashes every 2 tiles
+        if (isH && (ty % (C.ROAD)) === Math.floor(C.ROAD/2) && (tx % 2)===0) {
+          ctx.fillStyle = col('road_mark', v);
+          ctx.fillRect(px+6, py+4, T-12, 4);
+        }
+        if (isV && (tx % (C.ROAD)) === Math.floor(C.ROAD/2) && (ty % 2)===0) {
+          ctx.fillStyle = col('road_mark', v);
+          ctx.fillRect(px+4, py+6, 4, T-12);
+        }
+      }
+    }
+  }
+
+  // Snow on ground (light layer, fades with vitality)
+  if (v < 0.7) {
+    const snowAlpha = (1-v/0.7)*0.3;
+    ctx.fillStyle = `rgba(200,210,220,${snowAlpha})`;
+    for (let ty = tyMin; ty <= tyMax; ty++) {
+      for (let tx = txMin; tx <= txMax; tx++) {
+        const cell = tileMap[ty] && tileMap[ty][tx];
+        if (cell && (cell.type==='sidewalk'||cell.type==='lot')) {
+          ctx.fillRect(tx*T, ty*T, T, T*0.25);
+        }
+      }
+    }
+  }
+}
+
+function drawBuildings(v) {
+  for (const b of buildings) {
+    // Cull
+    if (b.x + b.w < camX - 50 || b.x > camX + W + 50) continue;
+    if (b.y + b.h < camY - 50 || b.y > camY + H + 50) continue;
+
+    const baseColor = col('bld_' + b.type, v);
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+
+    // Stains (darker patches, fade with vitality)
+    if (b.stain && v < 0.8) {
+      ctx.fillStyle = `rgba(0,0,0,${(1-v)*0.25})`;
+      ctx.fillRect(b.x+4, b.y+b.h*0.6, b.w*0.4, b.h*0.35);
+      ctx.fillRect(b.x+b.w*0.55, b.y+b.h*0.2, b.w*0.3, b.h*0.5);
+    }
+
+    // Windows
+    const cols = b.winGrid;
+    const rows = b.floors;
+    const wp = b.w / (cols+1);
+    const hp = b.h / (rows+1);
+    const ws = Math.max(4, wp*0.45);
+    const hs = Math.max(4, hp*0.45);
+    for (let r = 0; r < rows; r++) {
+      for (let wc = 0; wc < cols; wc++) {
+        const lit = b.winLitMap[r*cols+wc] && v > 0.1;
+        ctx.fillStyle = lit ? col('bld_win_lit', v) : col('bld_win_dark', v);
+        ctx.fillRect(
+          b.x + (wc+1)*wp - ws/2,
+          b.y + (r+1)*hp - hs/2,
+          ws, hs
+        );
+      }
+    }
+
+    // Snow on roof (fades with vitality)
+    if (v < 0.75) {
+      const sa = (1 - v/0.75)*0.85;
+      ctx.fillStyle = lerpHex('#7a8090', '#e8eef4', v < 0.5 ? 0 : (v-0.5)*2);
+      ctx.globalAlpha = sa * b.snow;
+      ctx.fillRect(b.x, b.y, b.w, 5);
+      ctx.globalAlpha = 1;
+    }
+
+    // Graffiti (appears when vivid)
+    if (b.graffiti && v > 0.3) {
+      ctx.globalAlpha = (v-0.3)/0.7 * 0.65;
+      const gcolors = ['#ff3366','#33ff99','#ffcc00','#00ccff','#ff6600'];
+      ctx.fillStyle = gcolors[Math.floor((b.x*b.y)%gcolors.length)];
+      ctx.font = `bold ${Math.round(b.h*0.18)}px Courier New`;
+      ctx.fillText('ГРАФФИТИ', b.x+8, b.y+b.h*0.75);
+      ctx.globalAlpha = 1;
+    }
+
+    // Outline
+    ctx.strokeStyle = lerpHex('#1a1a1a','#555555',v);
+    ctx.lineWidth = 1;
+    ctx.strokeRect(b.x, b.y, b.w, b.h);
+  }
+}
+
+function drawTrees(v) {
+  for (const t of trees) {
+    if (t.x < camX-60 || t.x > camX+W+60 || t.y < camY-60 || t.y > camY+H+60) continue;
+    // Trunk
+    ctx.fillStyle = col('tree_trunk', v);
+    ctx.fillRect(t.x-3, t.y-3, 6, 6);
+    // Leaves (bare in grey, full in vivid)
+    const leafAlpha = 0.35 + v*0.65;
+    ctx.fillStyle = col('tree_leaf', v);
+    ctx.globalAlpha = leafAlpha;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // Snow on top of tree
+    if (v < 0.5) {
+      ctx.fillStyle = `rgba(200,210,220,${(0.5-v)*0.7})`;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y-t.r*0.3, t.r*0.5, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawPlayer(v) {
+  if (!player.alive && GS.mode !== 'crash') return;
+  if (!player.alive) return;
+
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  ctx.rotate(player.angle);
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.ellipse(player.lean*6, 4, 10, 5, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Scooter body
+  const sc = lerpHex('#4a8a00','#88cc00',v);
+  const sc2 = lerpHex('#2a5a00','#55aa00',v);
+
+  ctx.fillStyle = sc;
+  ctx.beginPath();
+  ctx.roundRect(-8, -14, 16, 28, 4);
+  ctx.fill();
+
+  ctx.fillStyle = sc2;
+  ctx.fillRect(-5, -6, 10, 12);
+
+  // Wheels
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(0, -12, 5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0,  12, 5, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(0, -12, 5, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0,  12, 5, 0, Math.PI*2); ctx.stroke();
+
+  // Rider
+  const rc = lerpHex('#555','#ff6600',v*0.7);
+  ctx.fillStyle = rc;
+  ctx.fillRect(-6, -10, 12, 16);
+
+  // Head
+  ctx.fillStyle = lerpHex('#333','#ffaa88',v);
+  ctx.beginPath(); ctx.arc(player.lean*3, -14, 5, 0, Math.PI*2); ctx.fill();
+
+  // Boost flame
+  if (player.boosting) {
+    ctx.fillStyle = `rgba(255,${Math.floor(100+Math.random()*100)},0,0.9)`;
+    ctx.beginPath();
+    ctx.moveTo(-5, 14);
+    ctx.lineTo(5, 14);
+    ctx.lineTo(0, 14 + 10 + Math.random()*8);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Wheelie tilt
+  if (player.wheelie) {
+    // Already embedded in angle visually via lean
+  }
+
+  ctx.restore();
+
+  // Cop siren glow when chasing
+  for (const cop of cops) {
+    if (cop.state === 'CHASE') {
+      const dist = Math.hypot(player.x - cop.x, player.y - cop.y);
+      if (dist < 300) {
+        const alpha = (1 - dist/300) * 0.2 * (Math.sin(Date.now()/150)*.5+.5);
+        ctx.fillStyle = `rgba(255,0,0,${alpha})`;
+        ctx.fillRect(player.x-20, player.y-20, 40, 40);
+      }
+    }
+  }
+}
+
+function drawCars(v) {
+  for (const car of cars) {
+    if (car.x < camX-60 || car.x > camX+W+60 || car.y < camY-60 || car.y > camY+H+60) continue;
+    ctx.save();
+    ctx.translate(car.x, car.y);
+    ctx.rotate(car.angle);
+
+    ctx.fillStyle = car.color;
+    ctx.fillRect(-car.h/2, -car.w/2, car.h, car.w);
+
+    // Windshield
+    ctx.fillStyle = lerpHex('#1a2a2a','#446688',v);
+    ctx.fillRect(-car.h/2+3, -car.w/2+3, car.h*0.35, car.w-6);
+
+    // Headlights
+    ctx.fillStyle = lerpHex('#444','#ffffcc',v);
+    ctx.fillRect(car.h/2-5, -car.w/2+2, 4, 5);
+    ctx.fillRect(car.h/2-5, car.w/2-7, 4, 5);
+
+    // Brake lights
+    if (car.braking) {
+      ctx.fillStyle = '#ff0000';
+      ctx.fillRect(-car.h/2+1, -car.w/2+2, 4, 5);
+      ctx.fillRect(-car.h/2+1, car.w/2-7, 4, 5);
+    }
+
+    ctx.restore();
+  }
+}
+
+function drawCouriers(v) {
+  for (const c of couriers) {
+    if (c.x < camX-60 || c.x > camX+W+60 || c.y < camY-60 || c.y > camY+H+60) continue;
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.rotate(c.angle);
+
+    // Bike/scooter body
+    ctx.fillStyle = c.grade.color;
+    ctx.beginPath();
+    ctx.roundRect(-5,-12,10,24,3);
+    ctx.fill();
+
+    // Delivery box
+    ctx.fillStyle = c.grade.boxColor;
+    ctx.fillRect(-8,-4,16,10);
+
+    // Rider
+    ctx.fillStyle = lerpHex('#444','#ffaa55',v*0.6);
+    ctx.fillRect(-5,-8,10,12);
+
+    ctx.restore();
+
+    // Grade label
+    ctx.fillStyle = '#fff';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(c.grade.label, c.x, c.y - 18);
+  }
+}
+
+function drawPeds(v) {
+  for (const p of peds) {
+    if (p.x < camX-40 || p.x > camX+W+40 || p.y < camY-40 || p.y > camY+H+40) continue;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+
+    if (p.state === 'FLEE') {
+      ctx.fillStyle = lerpHex('#884422','#ff8844',v);
+    } else {
+      ctx.fillStyle = lerpHex('#555566','#8899aa',v);
+    }
+    ctx.fillRect(-4,-8,8,14);
+
+    // Head
+    ctx.fillStyle = lerpHex('#333','#ffaa88',v);
+    ctx.beginPath(); ctx.arc(0,-10,4,0,Math.PI*2); ctx.fill();
+
+    // Scream emoji when scared
+    if (p.state === 'FLEE') {
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff';
+      ctx.fillText('😱', 0, -20);
+    }
+
+    ctx.restore();
+  }
+}
+
+function drawCops(v) {
+  for (const cop of cops) {
+    if (cop.x < camX-60 || cop.x > camX+W+60 || cop.y < camY-60 || cop.y > camY+H+60) continue;
+    ctx.save();
+    ctx.translate(cop.x, cop.y);
+    ctx.rotate(cop.angle);
+
+    // Car body
+    ctx.fillStyle = lerpHex('#2a2a5a','#3a3acc',v);
+    ctx.fillRect(-10,-18,20,36);
+
+    // Roof stripe
+    ctx.fillStyle = lerpHex('#3a3a3a','#ffffff',v);
+    ctx.fillRect(-6,-8,12,8);
+
+    // Siren (blink)
+    const sirenOn = (cop.sirenTimer % 10) < 5;
+    ctx.fillStyle = sirenOn ? '#ff0000' : '#0000ff';
+    ctx.fillRect(-5,-20,8,5);
+    ctx.fillStyle = sirenOn ? '#0000ff' : '#ff0000';
+    ctx.fillRect(0,-20,5,5);
+
+    ctx.restore();
+  }
+}
+
+function drawDebris() {
+  for (const d of debris) {
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.angle);
+    ctx.globalAlpha = Math.min(1, d.life);
+    ctx.fillStyle = d.color;
+    ctx.fillRect(-d.size/2, -d.size/2, d.size, d.size);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawAmbulance(v) {
+  if (!ambulance) return;
+  ctx.save();
+  ctx.translate(ambulance.x, ambulance.y);
+  ctx.rotate(ambulance.angle);
+
+  if (ambulance.state === 'EXPLODE') {
+    // Explosion flash
+    const t = ambulance.timer / 60;
+    ctx.fillStyle = `rgba(255,180,0,${t})`;
+    ctx.beginPath();
+    ctx.arc(0, 0, (1-t)*60, 0, Math.PI*2);
+    ctx.fill();
+  } else {
+    // Ambulance body
+    ctx.fillStyle = lerpHex('#3a3a3a','#ffffff',v);
+    ctx.fillRect(-12, -22, 24, 44);
+    ctx.fillStyle = '#ff0000';
+    ctx.fillText('🚑', -10, 10);
+    // Siren
+    const s = (Date.now()%200)<100;
+    ctx.fillStyle = s?'#ff0000':'#0000ff';
+    ctx.fillRect(-6,-25,12,6);
+  }
+
+  ctx.restore();
+}
+
+// ─── SHOP ────────────────────────────────────────────────────────────────────
 function openShop() {
-  if (GS.mode !== 'RIDING') return;
-  GS.mode = 'SHOP';
-  document.getElementById('shop-pts').textContent = GS.points;
-  renderShop();
+  GS.mode = 'shop';
   document.getElementById('shop-overlay').style.display = 'flex';
+  document.getElementById('shop-coins').textContent = '💰 ' + GS.coins;
+  renderShopItems();
 }
+
 function closeShop() {
-  GS.mode = 'RIDING';
+  GS.mode = 'play';
   document.getElementById('shop-overlay').style.display = 'none';
 }
 
-// ============================================================
-// INIT & GAME LOOP
-// ============================================================
-function initThree() {
-  const canvas = document.getElementById('canvas');
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.enabled = false;
-
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87ceeb); // sky blue
-  scene.fog = new THREE.Fog(0x87ceeb, 60, 180);
-
-  camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 500);
-  camera.position.set(0, 6, 12);
-
-  // Lighting
-  const ambient = new THREE.AmbientLight(0xffffff, 0.55);
-  scene.add(ambient);
-  const sun = new THREE.DirectionalLight(0xfff5dd, 1.1);
-  sun.position.set(40, 80, 30);
-  scene.add(sun);
-  const fill = new THREE.DirectionalLight(0xccddff, 0.3);
-  fill.position.set(-30, 20, -30);
-  scene.add(fill);
-
-  clock = new THREE.Clock();
-  window.addEventListener('resize', () => {
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-  });
+function toggleShop() {
+  if (GS.mode === 'play') openShop();
+  else if (GS.mode === 'shop') closeShop();
 }
 
-function initGame() {
-  // Reset state
-  GS.mode = 'RIDING';
-  GS.score = 0; GS.points = 0; GS.timeScale = 1;
-  GS.scooter.pos = new THREE.Vector3(2, 0, 2);
-  GS.scooter.heading = 0; GS.scooter.speed = 0;
-  GS.scooter.isAirborne = false; GS.scooter.airFrames = 0;
-  GS.scooter.spinDeg = 0; GS.scooter.wheelieFrames = 0;
-  GS.scooter.hp = 100; GS.scooter.boostLeft = CONFIG.scooter.baseBoostFrames;
-  GS.scooter.upgrades = { motor: 0, deck: 0, battery: 0, wheels: 0, frame: 0 };
-  GS.dmg = { maxSpeed: 0, impactForce: 0, hitsCount: 0, pedScared: 0, tricks: [], finalScore: 0 };
-
-  // Clear scene except lights and fog (rebuild)
-  while (scene.children.length > 0) scene.remove(scene.children[0]);
-  const ambient = new THREE.AmbientLight(0xffffff, 0.55);
-  const sun = new THREE.DirectionalLight(0xfff5dd, 1.1);
-  sun.position.set(40, 80, 30);
-  const fill = new THREE.DirectionalLight(0xccddff, 0.3);
-  fill.position.set(-30, 20, -30);
-  scene.add(ambient, sun, fill);
-
-  cityGen    = new CityGenerator();
-  scooterCtrl = new ScooterController();
-  npcSystem  = new NPCSystem();
-  trickSystem = new TrickSystem();
-  crashSystem = new CrashSystem();
-  shopSystem  = new ShopSystem();
-  camSystem   = new CameraSystem();
-  if (ambulance) ambulance.reset();
-  ambulance  = new Ambulance();
-
-  scooterCtrl.boostFrames = getStats().boostMax;
-  GS.scooter.boostLeft = getStats().boostMax;
-
-  // TAB = shop, R = restart
-  document.onkeydown = (e) => {
-    if (e.code === 'Tab') { e.preventDefault(); GS.mode === 'RIDING' ? openShop() : closeShop(); }
-    if (e.code === 'KeyR' && GS.mode !== 'RIDING') restartGame();
-    if (e.code === 'Space') e.preventDefault(); // stop page scroll
-  };
-}
-
-function startGame() {
-  document.getElementById('start-screen').style.display = 'none';
-  if (!scene) initThree();
-  if (!audioSystem) audioSystem = new AudioSystem();
-  initGame();
-  gameStarted = true;
-  if (animFrameId) cancelAnimationFrame(animFrameId);
-  gameLoop();
-}
-
-function showCaughtScreen() {
-  const reasons = [
-    'Самокат конфискован. Страховка не поможет.',
-    'Протокол составлен. Имя уже в базе.',
-    '"Документики, пожалуйста." — больше некуда бежать.',
-    'Оштрафован. Разбиться было дешевле.',
-    'Мент в фуражке: "Ну и куда спешим?"',
-  ];
-  document.getElementById('caught-reason').textContent =
-    reasons[Math.floor(Math.random() * reasons.length)];
-  document.getElementById('caught-score').textContent = Math.round(GS.score);
-  document.getElementById('cop-alert').style.display = 'none';
-  document.getElementById('caught-screen').style.display = 'flex';
-}
-
-function restartGame() {
-  document.getElementById('crash-screen').style.display  = 'none';
-  document.getElementById('caught-screen').style.display = 'none';
-  document.getElementById('cop-alert').style.display     = 'none';
-  document.getElementById('shop-overlay').style.display  = 'none';
-  initGame();
-  if (!animFrameId) gameLoop();
-}
-
-function gameLoop() {
-  animFrameId = requestAnimationFrame(gameLoop);
-  const rawDelta = Math.min(clock.getDelta(), 0.05);
-  const delta = rawDelta * GS.timeScale;
-
-  if (GS.mode === 'RIDING') {
-    scooterCtrl.update(delta);
-    npcSystem.update(delta);
-    trickSystem.update();
-    audioSystem.updateMotor(GS.scooter.speed, getStats().topSpeed);
+function renderShopItems() {
+  const grid = document.getElementById('shop-grid');
+  grid.innerHTML = '';
+  for (const upg of UPGRADES) {
+    const lv = UP[upg.id];
+    const maxed = lv >= upg.maxLevel;
+    const cost = maxed ? 0 : upg.costs[lv];
+    const canBuy = !maxed && GS.coins >= cost;
+    const div = document.createElement('div');
+    div.className = 'shop-item';
+    div.style.borderColor = maxed ? '#ffcc00' : canBuy ? '#444' : '#333';
+    div.innerHTML = `
+      <div class="si-name">${upg.name}</div>
+      <div class="si-level">${upg.desc} — Lv ${lv}/${upg.maxLevel}</div>
+      <div class="si-cost">${maxed ? '✅ MAXED' : (canBuy?'💰 '+cost:'🔒 '+cost)}</div>
+      <div class="si-bars">${Array.from({length:upg.maxLevel},(_,i)=>`<div class="si-bar ${i<lv?'filled':''}"></div>`).join('')}</div>
+    `;
+    if (canBuy) {
+      div.onclick = () => { GS.coins -= cost; UP[upg.id]++; renderShopItems(); document.getElementById('shop-coins').textContent='💰 '+GS.coins; };
+    }
+    grid.appendChild(div);
   }
-
-  crashSystem.update(rawDelta); // always real-time for debris
-  camSystem.update(rawDelta);
-  updateHUD();
-  renderer.render(scene, camera);
 }
 
-// ============================================================
-// VIRTUAL JOYSTICK & MOBILE BUTTONS
-// ============================================================
-(function initMobileControls() {
-  const zone  = document.getElementById('joystick-zone');
-  const knob  = document.getElementById('joystick-knob');
-  if (!zone || !knob) return;
+// ─── MOBILE CONTROLS ─────────────────────────────────────────────────────────
+let joyX = 0, joyY = 0;
+let mobileBoost = false;
+let joyActive = false;
+let joyTouchId = null;
+let joyBaseRect = null;
 
-  const RADIUS = 42; // макс отклонение рукоятки (px)
-  let activeTouchId = null;
-  let originX = 0, originY = 0;
-  let joyX = 0, joyY = 0; // -1..1
-
-  function applyJoy() {
-    // joyX: -1=лево, +1=право   joyY: -1=вперёд, +1=назад
-    if (!scooterCtrl) return;
-    const k = scooterCtrl.keys;
-    const threshold = 0.25;
-    k['_joyFwd']  = joyY < -threshold;
-    k['_joyBack'] = joyY >  threshold;
-    k['_joyLeft'] = joyX < -threshold;
-    k['_joyRight']= joyX >  threshold;
-    // Аналоговое усиление поворота через доп. поле
-    scooterCtrl._joyX = joyX;
-    scooterCtrl._joyY = joyY;
-  }
+function initMobile() {
+  const zone = document.getElementById('joystick-zone');
+  const knob = document.getElementById('joystick-knob');
+  const base = document.getElementById('joystick-base');
 
   zone.addEventListener('touchstart', e => {
     e.preventDefault();
-    if (activeTouchId !== null) return;
     const t = e.changedTouches[0];
-    activeTouchId = t.identifier;
-    const r = zone.getBoundingClientRect();
-    originX = r.left + r.width  / 2;
-    originY = r.top  + r.height / 2;
-    updateKnob(t.clientX, t.clientY);
-  }, { passive: false });
+    joyTouchId = t.identifier;
+    joyActive = true;
+    joyBaseRect = base.getBoundingClientRect();
+  }, {passive:false});
 
-  zone.addEventListener('touchmove', e => {
-    e.preventDefault();
+  window.addEventListener('touchmove', e => {
+    if (!joyActive) return;
     for (const t of e.changedTouches) {
-      if (t.identifier === activeTouchId) {
-        updateKnob(t.clientX, t.clientY);
-        break;
-      }
+      if (t.identifier !== joyTouchId) continue;
+      const cx = joyBaseRect.left + 65;
+      const cy = joyBaseRect.top + 65;
+      const dx = t.clientX - cx;
+      const dy = t.clientY - cy;
+      const dist = Math.min(50, Math.hypot(dx,dy));
+      const a = Math.atan2(dy,dx);
+      joyX = Math.cos(a)*dist/50;
+      joyY = Math.sin(a)*dist/50;
+      knob.style.transform = `translate(${Math.cos(a)*dist}px, ${Math.sin(a)*dist}px)`;
     }
-  }, { passive: false });
+  }, {passive:false});
 
-  zone.addEventListener('touchend', e => {
+  window.addEventListener('touchend', e => {
     for (const t of e.changedTouches) {
-      if (t.identifier === activeTouchId) {
-        activeTouchId = null;
+      if (t.identifier === joyTouchId) {
+        joyActive = false;
         joyX = 0; joyY = 0;
-        knob.style.transform = 'translate(-50%, -50%)';
-        applyJoy();
-        break;
+        knob.style.transform = '';
       }
     }
-  }, { passive: false });
+  });
 
-  function updateKnob(cx, cy) {
-    let dx = cx - originX;
-    let dy = cy - originY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > RADIUS) { dx *= RADIUS / dist; dy *= RADIUS / dist; }
-    joyX = dx / RADIUS;
-    joyY = dy / RADIUS;
-    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-    applyJoy();
+  const btnBoost = document.getElementById('btn-boost');
+  btnBoost.addEventListener('touchstart', e => { e.preventDefault(); mobileBoost=true; }, {passive:false});
+  btnBoost.addEventListener('touchend',   e => { mobileBoost=false; });
+
+  document.getElementById('btn-trick').addEventListener('touchstart', e => { e.preventDefault(); doTrick(); }, {passive:false});
+  document.getElementById('btn-shop').addEventListener('touchstart',  e => { e.preventDefault(); toggleShop(); }, {passive:false});
+}
+
+// ─── GAME LOOP ────────────────────────────────────────────────────────────────
+let lastTime = 0;
+let running = false;
+
+function gameLoop(ts) {
+  if (!running) return;
+  const dt = Math.min(32, ts - lastTime) / 16;
+  lastTime = ts;
+
+  if (GS.mode === 'play') {
+    updatePlayer(dt);
+    updatePeds();
+    updateCouriers();
+    updateCars();
+    updateCops();
+    updateCamera();
+    updateHUD();
+  } else if (GS.mode === 'crash') {
+    updateDebris();
+    updateAmbulance();
+    updateCamera();
+    if (camShake > 0) camShake--;
   }
 
-  // Патчим update ScooterController чтобы читал джойстик
-  const origSetupInput = ScooterController.prototype._setupInput;
-  ScooterController.prototype._setupInput = function() {
-    origSetupInput.call(this);
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+function startGame() {
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('shop-overlay').style.display = 'none';
+
+  GS.mode = 'play';
+  GS.score = 0;
+  GS.vitality = 0;
+  GS.targetVitality = 0;
+  GS.comboMult = 1;
+  GS.bannerTimer = 0;
+  trickCombo = [];
+  comboTimer = 0;
+  debris = [];
+  ambulance = null;
+  crashPhase = null;
+
+  genWorld();
+  resetPlayer();
+  spawnPeds(28);
+  spawnCouriers(14);
+  spawnCars(22);
+  spawnCop();
+
+  camX = player.x - W/2;
+  camY = player.y - H/2;
+
+  if (!running) {
+    running = true;
+    requestAnimationFrame(ts => { lastTime=ts; gameLoop(ts); });
+  }
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+initMobile();
+// Canvas.roundRect polyfill for older browsers
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r) {
+    this.beginPath();
+    this.moveTo(x+r,y);
+    this.lineTo(x+w-r,y);
+    this.quadraticCurveTo(x+w,y,x+w,y+r);
+    this.lineTo(x+w,y+h-r);
+    this.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    this.lineTo(x+r,y+h);
+    this.quadraticCurveTo(x,y+h,x,y+h-r);
+    this.lineTo(x,y+r);
+    this.quadraticCurveTo(x,y,x+r,y);
+    this.closePath();
   };
-
-  // Патчим чтение keys в update — добавляем джой-оси
-  const origUpdate = ScooterController.prototype.update;
-  ScooterController.prototype.update = function(delta) {
-    // Инжектим виртуальные клавиши из джойстика
-    if (this._joyX !== undefined) {
-      const k = this.keys;
-      if (k['_joyFwd'])   k['KeyW'] = true;  else delete k['KeyW'];
-      if (k['_joyBack'])  k['KeyS'] = true;  else delete k['KeyS'];
-      if (k['_joyLeft'])  k['KeyA'] = true;  else delete k['KeyA'];
-      if (k['_joyRight']) k['KeyD'] = true;  else delete k['KeyD'];
-    }
-    origUpdate.call(this, delta);
-  };
-
-  // Кнопки действий
-  function holdBtn(id, keyCode) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const press = (e) => {
-      e.preventDefault();
-      if (scooterCtrl) scooterCtrl.keys[keyCode] = true;
-      el.classList.add('pressed');
-    };
-    const release = (e) => {
-      e.preventDefault();
-      if (scooterCtrl) delete scooterCtrl.keys[keyCode];
-      el.classList.remove('pressed');
-    };
-    el.addEventListener('touchstart',  press,   { passive: false });
-    el.addEventListener('touchend',    release, { passive: false });
-    el.addEventListener('touchcancel', release, { passive: false });
-  }
-
-  holdBtn('btn-boost', 'Space');
-  holdBtn('btn-trick', 'ShiftLeft');
-
-  // Кнопка магазина — одиночный тап
-  const shopBtn = document.getElementById('btn-shop-m');
-  if (shopBtn) {
-    shopBtn.addEventListener('touchstart', e => {
-      e.preventDefault();
-      shopBtn.classList.add('pressed');
-    }, { passive: false });
-    shopBtn.addEventListener('touchend', e => {
-      e.preventDefault();
-      shopBtn.classList.remove('pressed');
-      if (GS.mode === 'RIDING') openShop();
-      else if (GS.mode === 'SHOP') closeShop();
-    }, { passive: false });
-  }
-
-  // Предотвращаем зум двойным тапом и скролл по всему экрану
-  document.addEventListener('touchmove', e => {
-    if (e.touches.length > 1) e.preventDefault();
-  }, { passive: false });
-})();
+}
 </script>
 </body>
 </html>
