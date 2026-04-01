@@ -902,66 +902,189 @@ function updatePeds() {
   }
 }
 
-function updateCouriers() {
-  const TARGET_COUNT = 14;
+// ─── COURIER ROUTING ─────────────────────────────────────────────────────────
+// Courier moves along road segments on the grid, turning at intersections.
+// axis:'h' → moving horizontally on roadGraph.h[hIdx]
+// axis:'v' → moving vertically  on roadGraph.v[vIdx]
+// At each intersection it randomly decides to continue or turn.
 
-  for (let i = couriers.length - 1; i >= 0; i--) {
-    const c = couriers[i];
-    const rg = roadGraph.h[c.routeIdx];
-    if (!rg) { couriers.splice(i, 1); continue; }
-
-    // Snap to road lane Y
-    const laneY = rg.y;
-    c.y += (laneY - c.y) * 0.10;
-    c.y = Math.max(laneY - T, Math.min(laneY + T, c.y));
-
-    // Accelerate to grade speed
-    c.speed += (c.grade.speed - c.speed) * 0.05;
-    c.speed = Math.min(c.speed, c.grade.speed);
-
-    // Move along X by routeDir
-    c.x += c.routeDir * c.speed;
-    c.angle = c.routeDir > 0 ? Math.PI/2 : -Math.PI/2;
-
-    // Despawn when off viewport, respawn from opposite edge
-    const offscreen = c.routeDir > 0
-      ? c.x > camX + W + CAR_GAP
-      : c.x < camX - CAR_GAP;
-
-    if (offscreen) {
-      const visRoads = roadGraph.h.filter((r, idx) =>
-        r.y > camY - CAR_GAP && r.y < camY + H + CAR_GAP
-      );
-      if (visRoads.length === 0) { couriers.splice(i, 1); continue; }
-      const newRg = visRoads[Math.floor(Math.random() * visRoads.length)];
-      c.routeIdx = roadGraph.h.indexOf(newRg);
-      c.y = newRg.y;
-      c.x = c.routeDir > 0 ? camX - CAR_GAP : camX + W + CAR_GAP;
-      c.speed = c.grade.speed;
-      // Randomise grade on re-entry for variety
-      c.grade = COURIER_GRADES[Math.floor(Math.random() * COURIER_GRADES.length)];
+function courierNextSegment(c) {
+  // Find intersection near current position and pick a new direction
+  if (c.axis === 'h') {
+    // Reached a vertical road crossing → maybe turn onto it
+    const vCandidates = roadGraph.v.filter(v =>
+      Math.abs(v.x - c.x) < T * 1.5
+    );
+    if (vCandidates.length && Math.random() < 0.5) {
+      const vRg = vCandidates[Math.floor(Math.random() * vCandidates.length)];
+      c.axis = 'v';
+      c.vIdx = roadGraph.v.indexOf(vRg);
+      c.x = vRg.x;
+      c.routeDir = Math.random() < 0.5 ? 1 : -1;
+    }
+    // else: continue on same h road, flip direction
+    else {
+      c.routeDir *= -1;
+    }
+  } else {
+    const hCandidates = roadGraph.h.filter(h =>
+      Math.abs(h.y - c.y) < T * 1.5
+    );
+    if (hCandidates.length && Math.random() < 0.5) {
+      const hRg = hCandidates[Math.floor(Math.random() * hCandidates.length)];
+      c.axis = 'h';
+      c.hIdx = roadGraph.h.indexOf(hRg);
+      c.y = hRg.y;
+      c.routeDir = Math.random() < 0.5 ? 1 : -1;
+    } else {
+      c.routeDir *= -1;
     }
   }
+}
 
-  // Top up
-  while (couriers.length < TARGET_COUNT) {
-    const grade = COURIER_GRADES[Math.floor(Math.random() * COURIER_GRADES.length)];
+function makeCourier() {
+  const grade = COURIER_GRADES[Math.floor(Math.random() * COURIER_GRADES.length)];
+  const useH = Math.random() < 0.5;
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  if (useH) {
     const visRoads = roadGraph.h.filter(r =>
       r.y > camY - CAR_GAP && r.y < camY + H + CAR_GAP
     );
     const pool = visRoads.length ? visRoads : roadGraph.h;
     const rg = pool[Math.floor(Math.random() * pool.length)];
-    const dir = Math.random() < 0.5 ? 1 : -1;
-    couriers.push({
+    return {
       x: dir > 0 ? camX - CAR_GAP : camX + W + CAR_GAP,
       y: rg.y,
       speed: grade.speed,
       grade,
-      routeIdx: roadGraph.h.indexOf(rg),
+      axis: 'h',
+      hIdx: roadGraph.h.indexOf(rg),
+      vIdx: 0,
       routeDir: dir,
-      angle: dir > 0 ? Math.PI/2 : -Math.PI/2,
+      angle: dir > 0 ? Math.PI / 2 : -Math.PI / 2,
       racing: false,
-    });
+      raceDist: 0,
+    };
+  } else {
+    const visRoads = roadGraph.v.filter(r =>
+      r.x > camX - CAR_GAP && r.x < camX + W + CAR_GAP
+    );
+    const pool = visRoads.length ? visRoads : roadGraph.v;
+    const rg = pool[Math.floor(Math.random() * pool.length)];
+    return {
+      x: rg.x,
+      y: dir > 0 ? camY - CAR_GAP : camY + H + CAR_GAP,
+      speed: grade.speed,
+      grade,
+      axis: 'v',
+      hIdx: 0,
+      vIdx: roadGraph.v.indexOf(rg),
+      routeDir: dir,
+      angle: dir > 0 ? 0 : Math.PI,
+      racing: false,
+      raceDist: 0,
+    };
+  }
+}
+
+function spawnCouriers() {
+  couriers = [];
+}
+
+function updateCouriers() {
+  const TARGET_COUNT = 14;
+  const RACE_TRIGGER  = 90;   // px — how close player gets to trigger race
+  const RACE_WIN_DIST = 320;  // px ahead of courier = win
+
+  for (let i = couriers.length - 1; i >= 0; i--) {
+    const c = couriers[i];
+
+    // ── movement ──────────────────────────────────────────────────────────────
+    const raceBoost = c.racing ? 1.35 : 1.0;
+    const targetSpd = c.grade.speed * raceBoost;
+    c.speed += (targetSpd - c.speed) * 0.06;
+    c.speed = Math.min(c.speed, targetSpd);
+
+    if (c.axis === 'h') {
+      const rg = roadGraph.h[c.hIdx];
+      if (!rg) { couriers.splice(i, 1); continue; }
+      c.y += (rg.y - c.y) * 0.12;
+      c.y = Math.max(rg.y - T, Math.min(rg.y + T, c.y));
+      c.x += c.routeDir * c.speed;
+      c.angle = c.routeDir > 0 ? Math.PI / 2 : -Math.PI / 2;
+
+      // Check intersection — vertical roads cross here
+      for (const vRg of roadGraph.v) {
+        if (Math.abs(vRg.x - c.x) < c.speed + 1) {
+          if (Math.random() < 0.3) { courierNextSegment(c); break; }
+        }
+      }
+      // World edge bounce
+      if (c.x > WORLD_W - T) { c.x = WORLD_W - T; courierNextSegment(c); }
+      if (c.x < T)            { c.x = T;           courierNextSegment(c); }
+
+    } else { // axis === 'v'
+      const rg = roadGraph.v[c.vIdx];
+      if (!rg) { couriers.splice(i, 1); continue; }
+      c.x += (rg.x - c.x) * 0.12;
+      c.x = Math.max(rg.x - T, Math.min(rg.x + T, c.x));
+      c.y += c.routeDir * c.speed;
+      c.angle = c.routeDir > 0 ? 0 : Math.PI;
+
+      for (const hRg of roadGraph.h) {
+        if (Math.abs(hRg.y - c.y) < c.speed + 1) {
+          if (Math.random() < 0.3) { courierNextSegment(c); break; }
+        }
+      }
+      if (c.y > WORLD_H - T) { c.y = WORLD_H - T; courierNextSegment(c); }
+      if (c.y < T)            { c.y = T;           courierNextSegment(c); }
+    }
+
+    // ── race logic ────────────────────────────────────────────────────────────
+    const dist = Math.hypot(player.x - c.x, player.y - c.y);
+
+    if (!c.racing && dist < RACE_TRIGGER && Math.abs(player.speed) > 1.5) {
+      c.racing = true;
+      c.raceDist = 0;
+      activeCourier = c;
+      GS.bannerText = `🏁 ГОНКА! ${c.grade.label} ${c.grade.name}`;
+      GS.bannerTimer = 140;
+    }
+
+    if (c.racing) {
+      c.raceDist = dist;
+      if (dist > RACE_WIN_DIST) {
+        // Player is far ahead — win
+        const reward = c.grade.reward;
+        GS.coins += reward;
+        GS.score += reward * 2;
+        GS.bannerText = `🏆 ОБОГНАЛ! +${reward} монет`;
+        GS.bannerTimer = 160;
+        c.racing = false;
+        if (activeCourier === c) activeCourier = null;
+        c.grade = COURIER_GRADES[Math.floor(Math.random() * COURIER_GRADES.length)];
+        updateHUD();
+      }
+      // Courier catches up fully — lose race (just cancel quietly)
+      if (dist < 15 && player.speed < c.grade.speed * 0.5) {
+        c.racing = false;
+        if (activeCourier === c) activeCourier = null;
+        GS.bannerText = '😤 ОБОГНАЛ КУРЬЕР...';
+        GS.bannerTimer = 100;
+      }
+    }
+
+    // ── despawn far off-screen ────────────────────────────────────────────────
+    if (!c.racing) {
+      const offX = c.x < camX - W || c.x > camX + W * 2;
+      const offY = c.y < camY - H || c.y > camY + H * 2;
+      if (offX && offY) { couriers.splice(i, 1); }
+    }
+  }
+
+  // Top up
+  while (couriers.length < TARGET_COUNT) {
+    couriers.push(makeCourier());
   }
 }
 
@@ -1539,32 +1662,60 @@ function drawCars(v) {
 
 function drawCouriers(v) {
   for (const c of couriers) {
-    if (c.x < camX-60 || c.x > camX+W+60 || c.y < camY-60 || c.y > camY+H+60) continue;
+    if (c.x < camX-80 || c.x > camX+W+80 || c.y < camY-80 || c.y > camY+H+80) continue;
+
     ctx.save();
     ctx.translate(c.x, c.y);
     ctx.rotate(c.angle);
 
-    // Bike/scooter body
+    // Racing glow ring
+    if (c.racing) {
+      const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 120);
+      ctx.strokeStyle = `rgba(255,220,0,${0.5 + pulse * 0.5})`;
+      ctx.lineWidth = 2 + pulse * 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, 16, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Bike body
     ctx.fillStyle = c.grade.color;
     ctx.beginPath();
-    ctx.roundRect(-5,-12,10,24,3);
+    ctx.roundRect(-5, -13, 10, 26, 3);
     ctx.fill();
 
     // Delivery box
     ctx.fillStyle = c.grade.boxColor;
-    ctx.fillRect(-8,-4,16,10);
+    ctx.fillRect(-9, -5, 18, 12);
+    // Box highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(-8, -4, 16, 4);
 
     // Rider
-    ctx.fillStyle = lerpHex('#444','#ffaa55',v*0.6);
-    ctx.fillRect(-5,-8,10,12);
+    ctx.fillStyle = lerpHex('#444', '#ffaa55', v * 0.6);
+    ctx.fillRect(-5, -9, 10, 13);
+    // Head
+    ctx.fillStyle = lerpHex('#333', '#ffaa88', v);
+    ctx.beginPath();
+    ctx.arc(0, -14, 4, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.restore();
 
-    // Grade label
-    ctx.fillStyle = '#fff';
-    ctx.font = '14px sans-serif';
+    // Label + race distance above courier
     ctx.textAlign = 'center';
-    ctx.fillText(c.grade.label, c.x, c.y - 18);
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillStyle = c.racing ? '#ffdd00' : '#fff';
+    ctx.fillText(c.grade.label, c.x, c.y - 22);
+    if (c.racing) {
+      ctx.font = '10px sans-serif';
+      ctx.fillStyle = '#ffdd00';
+      ctx.fillText(c.grade.name, c.x, c.y - 10);
+    } else {
+      ctx.font = '9px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillText(c.grade.name, c.x, c.y - 10);
+    }
   }
 }
 
