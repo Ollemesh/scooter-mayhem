@@ -1459,15 +1459,17 @@ function drawCarSide(car, v) {
   ctx.beginPath(); ctx.arc(-W2*0.55, wy, wr*0.45, 0, Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.arc( W2*0.55, wy, wr*0.45, 0, Math.PI*2); ctx.fill();
 
-  // Headlight (front)
-  ctx.fillStyle = lerpHex('#554','#ffffbb', v);
+  // Headlight (front) — blink when braking
+  const blinkOn = car.braking && (Date.now() % 250 < 125);
+  ctx.fillStyle = blinkOn ? '#ffffff' : lerpHex('#554','#ffffbb', v);
   ctx.fillRect(W2-6, -H2+4, 6, 7);
-  // Taillight (rear)
-  if (car.braking) {
-    ctx.fillStyle = '#ff1111';
-  } else {
-    ctx.fillStyle = lerpHex('#440','#cc2200', v);
+  // Glow when blinking
+  if (blinkOn) {
+    ctx.fillStyle = 'rgba(255,255,180,0.35)';
+    ctx.fillRect(W2-14, -H2+1, 14, 13);
   }
+  // Taillight (rear)
+  ctx.fillStyle = car.braking ? '#ff1111' : lerpHex('#440','#cc2200', v);
   ctx.fillRect(-W2, -H2+4, 5, 7);
 }
 
@@ -1500,12 +1502,17 @@ function drawCarFront(car, v, facingDown) {
   }
 
   if (facingDown) {
-    // Front view: headlights bottom
-    ctx.fillStyle = lerpHex('#554','#ffffbb', v);
+    // Front view: headlights at bottom — blink when braking
+    const blinkOn = car.braking && (Date.now() % 250 < 125);
+    ctx.fillStyle = blinkOn ? '#ffffff' : lerpHex('#554','#ffffbb', v);
     ctx.beginPath(); ctx.arc(-CW*0.5, CH-5, 5, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc( CW*0.5, CH-5, 5, 0, Math.PI*2); ctx.fill();
+    if (blinkOn) {
+      ctx.fillStyle = 'rgba(255,255,180,0.35)';
+      ctx.fillRect(-CW*0.75, CH-14, CW*1.5, 14);
+    }
   } else {
-    // Rear view: taillights bottom
+    // Rear view: taillights at bottom
     ctx.fillStyle = car.braking ? '#ff1111' : lerpHex('#440','#cc2200', v);
     ctx.fillRect(-CW*0.6, CH-7, 14, 7);
     ctx.fillRect( CW*0.6-14, CH-7, 14, 7);
