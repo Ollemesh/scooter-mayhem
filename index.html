@@ -567,26 +567,51 @@ function spawnCouriers(count) {
   }
 }
 
+const CAR_COLORS = ['#5a4a3a','#3a3a4e','#4a3a3a','#3e4a3a','#4a4a4a','#5a3a3a','#3a4a4a','#4e3a3a'];
+const CAR_GAP = 80; // px beyond viewport edge where cars spawn/despawn
+
+function makeCar(axis, rgIdx, dir, spawnAtViewportEdge) {
+  const colors = CAR_COLORS;
+  const color = colors[Math.floor(Math.random()*colors.length)];
+  const targetSpeed = 1.0 + Math.random()*0.9;
+  if (axis === 'h') {
+    const rg = roadGraph.h[rgIdx];
+    const laneY = rg.y + dir * T * 0.4;
+    let x;
+    if (spawnAtViewportEdge) {
+      // Spawn just outside the viewport edge in the direction of travel
+      x = dir > 0 ? camX - CAR_GAP : camX + W + CAR_GAP;
+    } else {
+      x = rg.xMin + Math.random() * (rg.xMax - rg.xMin);
+    }
+    return { x, y: laneY, speed: spawnAtViewportEdge ? targetSpeed : 0,
+      targetSpeed, dir, axis:'h', routeIdx: rgIdx,
+      angle: dir > 0 ? Math.PI/2 : -Math.PI/2,
+      color, w:44, h:22, braking: false };
+  } else {
+    const rg = roadGraph.v[rgIdx];
+    const laneX = rg.x + dir * T * 0.4;
+    let y;
+    if (spawnAtViewportEdge) {
+      y = dir > 0 ? camY - CAR_GAP : camY + H + CAR_GAP;
+    } else {
+      y = rg.yMin + Math.random() * (rg.yMax - rg.yMin);
+    }
+    return { x: laneX, y, speed: spawnAtViewportEdge ? targetSpeed : 0,
+      targetSpeed, dir, axis:'v', routeIdx: rgIdx,
+      angle: dir > 0 ? 0 : Math.PI,
+      color, w:22, h:44, braking: false };
+  }
+}
+
 function spawnCars(count) {
   cars = [];
   for (let i = 0; i < count; i++) {
-    const rg = roadGraph.h[1 + Math.floor(Math.random()*(roadGraph.h.length-2))];
-    const dir = Math.random()<0.5?1:-1;
-    const colors = ['#5a4a3a','#3a3a4e','#4a3a3a','#3e4a3a','#4a4a4a','#5a3a3a'];
-    cars.push({
-      x: rg.xMin + Math.random()*(rg.xMax-rg.xMin),
-      y: rg.y + dir*T*0.4,   // exact lane Y from the start
-      vx: 0, vy: 0,
-      speed: 0,
-      targetSpeed: 1.0 + Math.random()*0.8,
-      angle: dir > 0 ? Math.PI/2 : -Math.PI/2,
-      dir,
-      routeAxis:'h',
-      routeIdx: roadGraph.h.indexOf(rg),
-      color: colors[Math.floor(Math.random()*colors.length)],
-      w:44, h:22,
-      braking: false,
-    });
+    const axis = Math.random() < 0.5 ? 'h' : 'v';
+    const graph = axis === 'h' ? roadGraph.h : roadGraph.v;
+    const rgIdx = 1 + Math.floor(Math.random() * (graph.length - 2));
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    cars.push(makeCar(axis, rgIdx, dir, false));
   }
 }
 
@@ -923,48 +948,104 @@ function updateCouriers() {
 }
 
 function updateCars() {
-  for (const car of cars) {
-    const rg = roadGraph.h[car.routeIdx];
-    if (!rg) continue;
+  const TARGET_COUNT = 22;
+  for (let i = cars.length - 1; i >= 0; i--) {
+    const car = cars[i];
 
-    // Snap Y to lane — small lerp, but hard-clamp so car never drifts far off road
-    const laneY = rg.y + car.dir * T * 0.4;
-    car.y += (laneY - car.y) * 0.12;
-    car.y = Math.max(laneY - T, Math.min(laneY + T, car.y)); // clamp to ±1 tile
+    if (car.axis === 'h') {
+      const rg = roadGraph.h[car.routeIdx];
+      if (!rg) { cars.splice(i, 1); continue; }
 
-    // Look-ahead
-    const lookDist = 48;
-    let blocked = false;
-    const lookX = car.x + car.dir * lookDist;
-    for (const other of cars) {
-      if (other === car) continue;
-      if (Math.abs(other.y - car.y) < 20 && Math.abs(other.x - lookX) < 32 && Math.sign(other.x - car.x) === car.dir) {
-        blocked = true; break;
+      const laneY = rg.y + car.dir * T * 0.4;
+      car.y += (laneY - car.y) * 0.12;
+      car.y = Math.max(laneY - T, Math.min(laneY + T, car.y));
+
+      // Look-ahead
+      const lookX = car.x + car.dir * 56;
+      let blocked = false;
+      for (const other of cars) {
+        if (other === car || other.axis !== 'h') continue;
+        if (Math.abs(other.y - car.y) < 22 && Math.abs(other.x - lookX) < 40 && Math.sign(other.x - car.x) === car.dir) {
+          blocked = true; break;
+        }
+      }
+      if (!blocked && Math.abs(player.y - car.y) < 22 && Math.abs(player.x - lookX) < 36 && Math.sign(player.x - car.x) === car.dir) blocked = true;
+
+      car.braking = blocked;
+      car.speed += ((blocked ? 0 : car.targetSpeed) - car.speed) * 0.08;
+      car.speed = Math.max(0, Math.min(car.targetSpeed, car.speed));
+      car.x += car.dir * car.speed;
+
+      // Despawn when off viewport, then respawn from opposite edge
+      const offscreen = car.dir > 0 ? car.x > camX + W + CAR_GAP : car.x < camX - CAR_GAP;
+      if (offscreen) {
+        // Respawn from the opposite edge on a road that's currently visible vertically
+        const visRoads = roadGraph.h.filter((rg, idx) =>
+          idx > 0 && idx < roadGraph.h.length-1 &&
+          rg.y > camY - CAR_GAP && rg.y < camY + H + CAR_GAP
+        );
+        if (visRoads.length === 0) { cars.splice(i, 1); continue; }
+        const newRg = visRoads[Math.floor(Math.random() * visRoads.length)];
+        const newDir = car.dir; // keep same direction for flow
+        car.routeIdx = roadGraph.h.indexOf(newRg);
+        car.dir = newDir;
+        car.angle = newDir > 0 ? Math.PI/2 : -Math.PI/2;
+        car.y = newRg.y + newDir * T * 0.4;
+        car.x = newDir > 0 ? camX - CAR_GAP : camX + W + CAR_GAP;
+        car.speed = car.targetSpeed;
+      }
+
+    } else { // axis === 'v'
+      const rg = roadGraph.v[car.routeIdx];
+      if (!rg) { cars.splice(i, 1); continue; }
+
+      const laneX = rg.x + car.dir * T * 0.4;
+      car.x += (laneX - car.x) * 0.12;
+      car.x = Math.max(laneX - T, Math.min(laneX + T, car.x));
+
+      // Look-ahead (vertical)
+      const lookY = car.y + car.dir * 56;
+      let blocked = false;
+      for (const other of cars) {
+        if (other === car || other.axis !== 'v') continue;
+        if (Math.abs(other.x - car.x) < 22 && Math.abs(other.y - lookY) < 40 && Math.sign(other.y - car.y) === car.dir) {
+          blocked = true; break;
+        }
+      }
+      if (!blocked && Math.abs(player.x - car.x) < 22 && Math.abs(player.y - lookY) < 36 && Math.sign(player.y - car.y) === car.dir) blocked = true;
+
+      car.braking = blocked;
+      car.speed += ((blocked ? 0 : car.targetSpeed) - car.speed) * 0.08;
+      car.speed = Math.max(0, Math.min(car.targetSpeed, car.speed));
+      car.y += car.dir * car.speed;
+
+      // Despawn + respawn from opposite edge
+      const offscreen = car.dir > 0 ? car.y > camY + H + CAR_GAP : car.y < camY - CAR_GAP;
+      if (offscreen) {
+        const visRoads = roadGraph.v.filter((rg, idx) =>
+          idx > 0 && idx < roadGraph.v.length-1 &&
+          rg.x > camX - CAR_GAP && rg.x < camX + W + CAR_GAP
+        );
+        if (visRoads.length === 0) { cars.splice(i, 1); continue; }
+        const newRg = visRoads[Math.floor(Math.random() * visRoads.length)];
+        const newDir = car.dir;
+        car.routeIdx = roadGraph.v.indexOf(newRg);
+        car.dir = newDir;
+        car.angle = newDir > 0 ? 0 : Math.PI;
+        car.x = newRg.x + newDir * T * 0.4;
+        car.y = newDir > 0 ? camY - CAR_GAP : camY + H + CAR_GAP;
+        car.speed = car.targetSpeed;
       }
     }
-    if (Math.abs(player.y - car.y) < 20 && Math.abs(player.x - lookX) < 30 && Math.sign(player.x - car.x) === car.dir) {
-      blocked = true;
-    }
+  }
 
-    car.braking = blocked;
-    const ts = blocked ? 0 : car.targetSpeed;
-    car.speed += (ts - car.speed) * 0.08;
-    car.speed = Math.max(0, Math.min(car.targetSpeed, car.speed)); // cap
-    car.x += car.dir * car.speed;
-
-    // Wrap X within road bounds
-    if (car.x > rg.xMax + T) car.x = rg.xMin - T;
-    if (car.x < rg.xMin - T) car.x = rg.xMax + T;
-
-    // Switch road — teleport Y immediately to avoid cross-world drift
-    if (Math.random() < 0.001) {
-      const ni = 1 + Math.floor(Math.random()*(roadGraph.h.length-2));
-      car.routeIdx = ni;
-      car.dir = Math.random()<0.5?1:-1;
-      car.angle = car.dir > 0 ? Math.PI/2 : -Math.PI/2;
-      const nrg = roadGraph.h[ni];
-      if (nrg) car.y = nrg.y + car.dir * T * 0.4; // teleport, not lerp
-    }
+  // Top up car count if some were removed
+  while (cars.length < TARGET_COUNT) {
+    const axis = Math.random() < 0.5 ? 'h' : 'v';
+    const graph = axis === 'h' ? roadGraph.h : roadGraph.v;
+    const rgIdx = 1 + Math.floor(Math.random() * (graph.length - 2));
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    cars.push(makeCar(axis, rgIdx, dir, true));
   }
 }
 
@@ -1415,22 +1496,16 @@ function drawCarFront(car, v, facingDown) {
 
 function drawCars(v) {
   for (const car of cars) {
-    if (car.x < camX-80 || car.x > camX+W+80 || car.y < camY-80 || car.y > camY+H+80) continue;
+    if (car.x < camX-100 || car.x > camX+W+100 || car.y < camY-100 || car.y > camY+H+100) continue;
     ctx.save();
     ctx.translate(car.x, car.y);
 
-    // Determine orientation from angle
-    // Horizontal roads: angle ≈ ±PI/2  → side view
-    // Vertical roads:   angle ≈ 0 or PI → front/rear view
-    const normAngle = ((car.angle % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
-    const isHorizontal = (normAngle > Math.PI*0.25 && normAngle < Math.PI*0.75)
-                      || (normAngle > Math.PI*1.25 && normAngle < Math.PI*1.75);
-
-    if (isHorizontal) {
+    if (car.axis === 'h') {
       drawCarSide(car, v);
     } else {
-      const facingDown = normAngle < Math.PI; // angle≈0 = up in canvas = moving up-screen, PI = down
-      drawCarFront(car, v, !facingDown);
+      // Vertical: flip vertically for dir=-1 (moving up), dir=1 (moving down = front faces down)
+      ctx.scale(1, car.dir < 0 ? -1 : 1);
+      drawCarFront(car, v, true); // true = headlights at bottom (front = direction of travel)
     }
 
     ctx.restore();
