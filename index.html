@@ -584,7 +584,7 @@ function spawnCars(count) {
       routeAxis:'h',
       routeIdx: roadGraph.h.indexOf(rg),
       color: colors[Math.floor(Math.random()*colors.length)],
-      w:28, h:18,
+      w:44, h:22,
       braking: false,
     });
   }
@@ -1302,30 +1302,135 @@ function drawPlayer(v) {
   }
 }
 
+function drawCarSide(car, v) {
+  // Side view — car moving horizontally (left or right)
+  // dir=1 → moving right, dir=-1 → moving left (flip via scaleX)
+  const W2 = 36, H2 = 20; // half-extents: length=72, height=40
+  const flip = car.dir < 0 ? -1 : 1;
+  ctx.scale(flip, 1);
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.ellipse(0, H2+2, W2*0.9, 5, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Body
+  ctx.fillStyle = car.color;
+  ctx.beginPath();
+  ctx.roundRect(-W2, -H2, W2*2, H2*2, 5);
+  ctx.fill();
+
+  // Roof / cabin (slightly lighter, inset)
+  ctx.fillStyle = lerpHex('#2a2a2e','#888898', v);
+  ctx.beginPath();
+  ctx.roundRect(-W2*0.25, -H2-10, W2*0.9, H2+12, 4);
+  ctx.fill();
+
+  // Windshield (front = right side when dir=1)
+  ctx.fillStyle = lerpHex('#1a2530','#5588aa', v);
+  ctx.beginPath();
+  ctx.moveTo(W2*0.62, -H2+2);
+  ctx.lineTo(W2*0.95, -H2+3);
+  ctx.lineTo(W2*0.95, -H2+10);
+  ctx.lineTo(W2*0.55, -H2+11);
+  ctx.closePath();
+  ctx.fill();
+
+  // Rear window
+  ctx.fillStyle = lerpHex('#1a2530','#446688', v);
+  ctx.beginPath();
+  ctx.moveTo(-W2*0.62, -H2+2);
+  ctx.lineTo(-W2*0.28, -H2+2);
+  ctx.lineTo(-W2*0.22, -H2+11);
+  ctx.lineTo(-W2*0.65, -H2+10);
+  ctx.closePath();
+  ctx.fill();
+
+  // Side windows
+  ctx.fillStyle = lerpHex('#1e2a34','#4a7799', v);
+  ctx.fillRect(-W2*0.2, -H2+2, W2*0.32, H2*0.55);
+
+  // Wheels (4 visible from side)
+  ctx.fillStyle = '#111';
+  const wr = 8, wy = H2-2;
+  ctx.beginPath(); ctx.arc(-W2*0.55, wy, wr, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( W2*0.55, wy, wr, 0, Math.PI*2); ctx.fill();
+  // Hubcap
+  ctx.fillStyle = lerpHex('#333','#aaa', v);
+  ctx.beginPath(); ctx.arc(-W2*0.55, wy, wr*0.45, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( W2*0.55, wy, wr*0.45, 0, Math.PI*2); ctx.fill();
+
+  // Headlight (front)
+  ctx.fillStyle = lerpHex('#554','#ffffbb', v);
+  ctx.fillRect(W2-6, -H2+4, 6, 7);
+  // Taillight (rear)
+  if (car.braking) {
+    ctx.fillStyle = '#ff1111';
+  } else {
+    ctx.fillStyle = lerpHex('#440','#cc2200', v);
+  }
+  ctx.fillRect(-W2, -H2+4, 5, 7);
+}
+
+function drawCarFront(car, v, facingDown) {
+  // Front/rear view — car moving vertically
+  const CW = 38, CH = 22;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.ellipse(0, CH+3, CW*0.8, 5, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Body
+  ctx.fillStyle = car.color;
+  ctx.beginPath();
+  ctx.roundRect(-CW, -CH, CW*2, CH*2, 5);
+  ctx.fill();
+
+  // Windshield
+  ctx.fillStyle = lerpHex('#1a2530','#5588aa', v);
+  ctx.beginPath();
+  ctx.roundRect(-CW*0.62, -CH+3, CW*1.24, CH*0.75, 3);
+  ctx.fill();
+
+  // Wheels (top-down corners)
+  ctx.fillStyle = '#111';
+  const positions = [[-CW-3,-CH+2],[CW-5,-CH+2],[-CW-3,CH-10],[CW-5,CH-10]];
+  for (const [px,py] of positions) {
+    ctx.fillRect(px, py, 8, 12);
+  }
+
+  if (facingDown) {
+    // Front view: headlights bottom
+    ctx.fillStyle = lerpHex('#554','#ffffbb', v);
+    ctx.beginPath(); ctx.arc(-CW*0.5, CH-5, 5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc( CW*0.5, CH-5, 5, 0, Math.PI*2); ctx.fill();
+  } else {
+    // Rear view: taillights bottom
+    ctx.fillStyle = car.braking ? '#ff1111' : lerpHex('#440','#cc2200', v);
+    ctx.fillRect(-CW*0.6, CH-7, 14, 7);
+    ctx.fillRect( CW*0.6-14, CH-7, 14, 7);
+  }
+}
+
 function drawCars(v) {
   for (const car of cars) {
-    if (car.x < camX-60 || car.x > camX+W+60 || car.y < camY-60 || car.y > camY+H+60) continue;
+    if (car.x < camX-80 || car.x > camX+W+80 || car.y < camY-80 || car.y > camY+H+80) continue;
     ctx.save();
     ctx.translate(car.x, car.y);
-    ctx.rotate(car.angle);
 
-    ctx.fillStyle = car.color;
-    ctx.fillRect(-car.h/2, -car.w/2, car.h, car.w);
+    // Determine orientation from angle
+    // Horizontal roads: angle ≈ ±PI/2  → side view
+    // Vertical roads:   angle ≈ 0 or PI → front/rear view
+    const normAngle = ((car.angle % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+    const isHorizontal = (normAngle > Math.PI*0.25 && normAngle < Math.PI*0.75)
+                      || (normAngle > Math.PI*1.25 && normAngle < Math.PI*1.75);
 
-    // Windshield
-    ctx.fillStyle = lerpHex('#1a2a2a','#446688',v);
-    ctx.fillRect(-car.h/2+3, -car.w/2+3, car.h*0.35, car.w-6);
-
-    // Headlights
-    ctx.fillStyle = lerpHex('#444','#ffffcc',v);
-    ctx.fillRect(car.h/2-5, -car.w/2+2, 4, 5);
-    ctx.fillRect(car.h/2-5, car.w/2-7, 4, 5);
-
-    // Brake lights
-    if (car.braking) {
-      ctx.fillStyle = '#ff0000';
-      ctx.fillRect(-car.h/2+1, -car.w/2+2, 4, 5);
-      ctx.fillRect(-car.h/2+1, car.w/2-7, 4, 5);
+    if (isHorizontal) {
+      drawCarSide(car, v);
+    } else {
+      const facingDown = normAngle < Math.PI; // angle≈0 = up in canvas = moving up-screen, PI = down
+      drawCarFront(car, v, !facingDown);
     }
 
     ctx.restore();
