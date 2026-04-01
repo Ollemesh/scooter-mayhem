@@ -742,7 +742,8 @@ function updatePlayer(dt) {
     player.boost = Math.max(0, player.boost - 1);
   } else {
     player.boosting = false;
-    if (player.boost < st.boostDur) player.boost += st.boostRegen * 0.016 * 60;
+    // Regen only when not boosting — much slower than drain (drain=1/frame, regen≈0.15/frame)
+    if (player.boost < st.boostDur) player.boost += st.boostRegen * 0.075;
   }
 
   // Turning (speed-dependent)
