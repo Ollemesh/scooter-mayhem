@@ -508,30 +508,24 @@ let activeRace = null; // { checkpoints:[{x,y}], playerCP, courierCP, courier }
 // Walks the road graph alternating h/v turns.
 function buildRaceRoute(ox, oy, n) {
   const pts = [];
-  // Snap start to nearest intersection
+  // Snap to nearest intersection
   let hRg = roadGraph.h.reduce((a,b) => Math.abs(b.y-oy)<Math.abs(a.y-oy)?b:a);
   let vRg = roadGraph.v.reduce((a,b) => Math.abs(b.x-ox)<Math.abs(a.x-ox)?b:a);
-  // First checkpoint: nearest intersection to player
-  pts.push({ x: vRg.x, y: hRg.y });
-
   let curH = roadGraph.h.indexOf(hRg);
   let curV = roadGraph.v.indexOf(vRg);
-  let axis = 'h'; // next move: walk along h then turn on v, etc.
 
-  for (let i = 1; i < n; i++) {
-    if (axis === 'h') {
-      // Move to a different vertical road (pick one 2-4 blocks away)
+  // Step distance per checkpoint: 2-4 road blocks (STEP tiles apart)
+  for (let i = 0; i < n; i++) {
+    if (i % 2 === 0) {
+      // Move horizontally to a new vertical road
       const step = (Math.random() < 0.5 ? 1 : -1) * (2 + Math.floor(Math.random() * 3));
       curV = Math.max(1, Math.min(roadGraph.v.length - 2, curV + step));
-      axis = 'v';
     } else {
+      // Move vertically to a new horizontal road
       const step = (Math.random() < 0.5 ? 1 : -1) * (2 + Math.floor(Math.random() * 3));
       curH = Math.max(1, Math.min(roadGraph.h.length - 2, curH + step));
-      axis = 'h';
     }
-    const h = roadGraph.h[curH];
-    const v = roadGraph.v[curV];
-    pts.push({ x: v.x, y: h.y });
+    pts.push({ x: roadGraph.v[curV].x, y: roadGraph.h[curH].y });
   }
   return pts;
 }
@@ -1098,12 +1092,13 @@ function updateCouriers() {
     if (!c.racing && !activeRace && dist < RACE_TRIGGER && Math.abs(player.speed) > 1.5) {
       c.racing = true;
       activeCourier = c;
-      // Build route starting near player
-      const cps = buildRaceRoute(player.x, player.y, 4 + Math.floor(Math.random() * 2));
+      // CP count by grade: weak courier = short race
+      const gradeIdx = COURIER_GRADES.indexOf(c.grade);
+      const cpCount = 2 + gradeIdx; // Стажёр=2, Джун=3, Мидл=4, Сеньор=5, DEMON=6
+      const cps = buildRaceRoute(player.x, player.y, cpCount);
       activeRace = { checkpoints: cps, playerCP: 0, courierCP: 0, courier: c };
-      // Point courier at first checkpoint
       steerCourierToward(c, cps[0].x, cps[0].y);
-      GS.bannerText = `🏁 ГОНКА! ${c.grade.label} ${c.grade.name}`;
+      GS.bannerText = `🏁 ГОНКА! ${c.grade.label} ${c.grade.name} — ${cpCount} ЧП`;
       GS.bannerTimer = 180;
     }
 
@@ -1135,26 +1130,29 @@ function updateCouriers() {
       }
 
       // ── Player checkpoint progress ──
-      const pc = cps[race.playerCP];
-      const playerDistToCP = Math.hypot(player.x - pc.x, player.y - pc.y);
-      if (playerDistToCP < 36) {
-        race.playerCP++;
-        camShake = 4;
-        if (race.playerCP >= cps.length) {
-          // Player finished first
-          const reward = c.grade.reward;
-          GS.coins += reward;
-          GS.score += reward * 2;
-          GS.bannerText = `🏆 ФИНИШ! +${reward} монет`;
-          GS.bannerTimer = 200;
-          c.racing = false;
-          activeCourier = null;
-          activeRace = null;
-          c.grade = COURIER_GRADES[Math.floor(Math.random() * COURIER_GRADES.length)];
-          updateHUD();
-        } else {
-          GS.bannerText = `✅ ЧП ${race.playerCP}/${cps.length}`;
-          GS.bannerTimer = 80;
+      if (race.playerCP < cps.length) {
+        const pc = cps[race.playerCP];
+        const playerDistToCP = Math.hypot(player.x - pc.x, player.y - pc.y);
+        if (playerDistToCP < 44) {
+          race.playerCP++;
+          camShake = 4;
+          if (race.playerCP >= cps.length) {
+            // Player finished first
+            const reward = c.grade.reward;
+            GS.coins += reward;
+            GS.score += reward * 2;
+            GS.bannerText = `🏆 ФИНИШ! +${reward} монет`;
+            GS.bannerTimer = 200;
+            c.racing = false;
+            activeCourier = null;
+            activeRace = null;
+            c.grade = COURIER_GRADES[Math.floor(Math.random() * COURIER_GRADES.length)];
+            updateHUD();
+            continue; // skip rest of loop body, activeRace is null now
+          } else {
+            GS.bannerText = `✅ ЧП ${race.playerCP}/${cps.length}`;
+            GS.bannerTimer = 80;
+          }
         }
       }
     }
