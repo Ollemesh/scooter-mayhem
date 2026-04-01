@@ -502,6 +502,58 @@ window.addEventListener('keyup', e => { keys[e.code] = false; });
 // ─── NPCS ────────────────────────────────────────────────────────────────────
 let peds = [], couriers = [], cars = [], cops = [];
 let activeCourier = null;
+let activeRace = null; // { checkpoints:[{x,y}], playerCP, courierCP, courier }
+
+// Build a race route of N checkpoints starting near (ox,oy).
+// Walks the road graph alternating h/v turns.
+function buildRaceRoute(ox, oy, n) {
+  const pts = [];
+  // Snap start to nearest intersection
+  let hRg = roadGraph.h.reduce((a,b) => Math.abs(b.y-oy)<Math.abs(a.y-oy)?b:a);
+  let vRg = roadGraph.v.reduce((a,b) => Math.abs(b.x-ox)<Math.abs(a.x-ox)?b:a);
+  // First checkpoint: nearest intersection to player
+  pts.push({ x: vRg.x, y: hRg.y });
+
+  let curH = roadGraph.h.indexOf(hRg);
+  let curV = roadGraph.v.indexOf(vRg);
+  let axis = 'h'; // next move: walk along h then turn on v, etc.
+
+  for (let i = 1; i < n; i++) {
+    if (axis === 'h') {
+      // Move to a different vertical road (pick one 2-4 blocks away)
+      const step = (Math.random() < 0.5 ? 1 : -1) * (2 + Math.floor(Math.random() * 3));
+      curV = Math.max(1, Math.min(roadGraph.v.length - 2, curV + step));
+      axis = 'v';
+    } else {
+      const step = (Math.random() < 0.5 ? 1 : -1) * (2 + Math.floor(Math.random() * 3));
+      curH = Math.max(1, Math.min(roadGraph.h.length - 2, curH + step));
+      axis = 'h';
+    }
+    const h = roadGraph.h[curH];
+    const v = roadGraph.v[curV];
+    pts.push({ x: v.x, y: h.y });
+  }
+  return pts;
+}
+
+// Steer a courier toward a target point, switching road segments as needed
+function steerCourierToward(c, tx, ty) {
+  const dx = tx - c.x, dy = ty - c.y;
+  const adx = Math.abs(dx), ady = Math.abs(dy);
+
+  if (adx > ady) {
+    // Move horizontally — find nearest h road with y≈ty
+    const best = roadGraph.h.reduce((a,b) => Math.abs(b.y-ty)<Math.abs(a.y-ty)?b:a);
+    c.axis = 'h';
+    c.hIdx = roadGraph.h.indexOf(best);
+    c.routeDir = dx > 0 ? 1 : -1;
+  } else {
+    const best = roadGraph.v.reduce((a,b) => Math.abs(b.x-tx)<Math.abs(a.x-tx)?b:a);
+    c.axis = 'v';
+    c.vIdx = roadGraph.v.indexOf(best);
+    c.routeDir = dy > 0 ? 1 : -1;
+  }
+}
 
 const COURIER_GRADES = [
   { name:'Стажёр',  speed:1.2,  color:'#664400', boxColor:'#aa7700', label:'🐢', reward:80  },
@@ -1043,34 +1095,67 @@ function updateCouriers() {
     // ── race logic ────────────────────────────────────────────────────────────
     const dist = Math.hypot(player.x - c.x, player.y - c.y);
 
-    if (!c.racing && dist < RACE_TRIGGER && Math.abs(player.speed) > 1.5) {
+    if (!c.racing && !activeRace && dist < RACE_TRIGGER && Math.abs(player.speed) > 1.5) {
       c.racing = true;
-      c.raceDist = 0;
       activeCourier = c;
+      // Build route starting near player
+      const cps = buildRaceRoute(player.x, player.y, 4 + Math.floor(Math.random() * 2));
+      activeRace = { checkpoints: cps, playerCP: 0, courierCP: 0, courier: c };
+      // Point courier at first checkpoint
+      steerCourierToward(c, cps[0].x, cps[0].y);
       GS.bannerText = `🏁 ГОНКА! ${c.grade.label} ${c.grade.name}`;
-      GS.bannerTimer = 140;
+      GS.bannerTimer = 180;
     }
 
-    if (c.racing) {
-      c.raceDist = dist;
-      if (dist > RACE_WIN_DIST) {
-        // Player is far ahead — win
-        const reward = c.grade.reward;
-        GS.coins += reward;
-        GS.score += reward * 2;
-        GS.bannerText = `🏆 ОБОГНАЛ! +${reward} монет`;
-        GS.bannerTimer = 160;
-        c.racing = false;
-        if (activeCourier === c) activeCourier = null;
-        c.grade = COURIER_GRADES[Math.floor(Math.random() * COURIER_GRADES.length)];
-        updateHUD();
+    if (c.racing && activeRace && activeRace.courier === c) {
+      const race = activeRace;
+      const cps  = race.checkpoints;
+
+      // ── Courier checkpoint progress ──
+      const cc = cps[race.courierCP];
+      const courierDistToCP = Math.hypot(c.x - cc.x, c.y - cc.y);
+      if (courierDistToCP < 28) {
+        race.courierCP++;
+        if (race.courierCP >= cps.length) {
+          // Courier finished first
+          c.racing = false;
+          activeCourier = null;
+          activeRace = null;
+          GS.bannerText = `😤 КУРЬЕР ФИНИШИРОВАЛ ПЕРВЫМ!`;
+          GS.bannerTimer = 160;
+          c.grade = COURIER_GRADES[Math.floor(Math.random() * COURIER_GRADES.length)];
+          updateHUD();
+          return; // skip further processing this frame
+        } else {
+          steerCourierToward(c, cps[race.courierCP].x, cps[race.courierCP].y);
+        }
+      } else {
+        // Keep steering toward current courier checkpoint
+        steerCourierToward(c, cc.x, cc.y);
       }
-      // Courier catches up fully — lose race (just cancel quietly)
-      if (dist < 15 && player.speed < c.grade.speed * 0.5) {
-        c.racing = false;
-        if (activeCourier === c) activeCourier = null;
-        GS.bannerText = '😤 ОБОГНАЛ КУРЬЕР...';
-        GS.bannerTimer = 100;
+
+      // ── Player checkpoint progress ──
+      const pc = cps[race.playerCP];
+      const playerDistToCP = Math.hypot(player.x - pc.x, player.y - pc.y);
+      if (playerDistToCP < 36) {
+        race.playerCP++;
+        camShake = 4;
+        if (race.playerCP >= cps.length) {
+          // Player finished first
+          const reward = c.grade.reward;
+          GS.coins += reward;
+          GS.score += reward * 2;
+          GS.bannerText = `🏆 ФИНИШ! +${reward} монет`;
+          GS.bannerTimer = 200;
+          c.racing = false;
+          activeCourier = null;
+          activeRace = null;
+          c.grade = COURIER_GRADES[Math.floor(Math.random() * COURIER_GRADES.length)];
+          updateHUD();
+        } else {
+          GS.bannerText = `✅ ЧП ${race.playerCP}/${cps.length}`;
+          GS.bannerTimer = 80;
+        }
       }
     }
 
@@ -1296,6 +1381,7 @@ function draw() {
   drawWorld(v, sx, sy);
   drawTrees(v);
   drawBuildings(v);
+  drawRaceRoute();
   drawCars(v);
   drawCouriers(v);
   drawPeds(v);
@@ -1304,6 +1390,107 @@ function draw() {
   if (ambulance) drawAmbulance(v);
   drawPlayer(v);
 
+  ctx.restore();
+}
+
+function drawRaceRoute() {
+  if (!activeRace) return;
+  const { checkpoints, playerCP, courierCP } = activeRace;
+  const now = Date.now();
+
+  // Draw connecting lines between checkpoints
+  ctx.save();
+  ctx.setLineDash([12, 8]);
+  ctx.lineWidth = 3;
+
+  for (let i = 0; i < checkpoints.length - 1; i++) {
+    const a = checkpoints[i], b = checkpoints[i + 1];
+    const done = Math.min(playerCP, courierCP) > i;
+    ctx.strokeStyle = done
+      ? 'rgba(100,255,100,0.25)'
+      : `rgba(255,220,0,${0.35 + 0.2 * Math.sin(now / 300 + i)})`;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Draw checkpoint markers
+  for (let i = 0; i < checkpoints.length; i++) {
+    const cp = checkpoints[i];
+    const playerDone  = playerCP  > i;
+    const courierDone = courierCP > i;
+    const isNext = i === playerCP;
+
+    // Outer ring — pulses for next checkpoint
+    const pulse = isNext ? 0.6 + 0.4 * Math.sin(now / 180) : 0.5;
+    ctx.beginPath();
+    ctx.arc(cp.x, cp.y, isNext ? 22 : 16, 0, Math.PI * 2);
+    ctx.strokeStyle = playerDone
+      ? 'rgba(100,255,100,0.7)'
+      : isNext
+        ? `rgba(255,220,0,${pulse})`
+        : 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = isNext ? 3 : 2;
+    ctx.stroke();
+
+    // Fill circle
+    ctx.beginPath();
+    ctx.arc(cp.x, cp.y, isNext ? 14 : 10, 0, Math.PI * 2);
+    ctx.fillStyle = playerDone
+      ? 'rgba(80,220,80,0.55)'
+      : isNext
+        ? `rgba(255,200,0,${0.4 + 0.3 * Math.sin(now / 180)})`
+        : 'rgba(255,255,255,0.15)';
+    ctx.fill();
+
+    // Label: number or finish flag
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${isNext ? 13 : 11}px Courier New`;
+    ctx.fillStyle = playerDone ? '#80ff80' : isNext ? '#fff' : 'rgba(255,255,255,0.6)';
+    ctx.fillText(
+      i === checkpoints.length - 1 ? '🏁' : (i + 1).toString(),
+      cp.x, cp.y
+    );
+    ctx.textBaseline = 'alphabetic';
+
+    // Courier progress indicator (small dot)
+    if (courierDone && !playerDone) {
+      ctx.beginPath();
+      ctx.arc(cp.x + 18, cp.y - 10, 5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,80,80,0.8)';
+      ctx.fill();
+    }
+  }
+
+  // HUD bar — race progress at top center
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // screen space
+  const bw = 260, bh = 28;
+  const bx = W / 2 - bw / 2, by = 12;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 6); ctx.fill();
+
+  // Player progress bar
+  const pPct = playerCP / checkpoints.length;
+  const cPct = courierCP / checkpoints.length;
+  ctx.fillStyle = '#ffdd00';
+  ctx.beginPath(); ctx.roundRect(bx + 2, by + 2, (bw - 4) * pPct, bh - 4, 4); ctx.fill();
+  // Courier bar (red, underneath)
+  ctx.fillStyle = 'rgba(255,60,60,0.7)';
+  ctx.beginPath(); ctx.roundRect(bx + 2, by + bh/2, (bw - 4) * cPct, bh/2 - 2, 2); ctx.fill();
+
+  // Labels
+  ctx.font = 'bold 11px Courier New';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(`🛴 ${playerCP}/${checkpoints.length}`, bx + 6, by + 13);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#ff8888';
+  ctx.fillText(`${activeRace.courier.grade.label} ${courierCP}/${checkpoints.length}`, bx + bw - 6, by + 13);
   ctx.restore();
 }
 
@@ -1953,6 +2140,8 @@ function startGame() {
   comboTimer = 0;
   debris = [];
   ambulance = null;
+  activeRace = null;
+  activeCourier = null;
   crashPhase = null;
 
   genWorld();
