@@ -545,26 +545,8 @@ function spawnPeds(count) {
   }
 }
 
-function spawnCouriers(count) {
-  couriers = [];
-  for (let i = 0; i < count; i++) {
-    const grade = COURIER_GRADES[Math.floor(Math.random()*COURIER_GRADES.length)];
-    const rg = roadGraph.h[Math.floor(Math.random()*roadGraph.h.length)];
-    couriers.push({
-      x: rg.xMin + Math.random()*(rg.xMax-rg.xMin),
-      y: rg.y,
-      vx:0, vy:0,
-      angle: Math.random()<0.5 ? 0 : Math.PI,
-      grade,
-      speed:0,
-      targetSpeed: grade.speed,
-      routeAxis:'h',
-      routeIdx: roadGraph.h.indexOf(rg),
-      routeDir: Math.random()<0.5?1:-1,
-      racing: false,
-      raceTimer: 0,
-    });
-  }
+function spawnCouriers() {
+  couriers = []; // updateCouriers will top up to TARGET_COUNT on first frame
 }
 
 const CAR_COLORS = ['#5a4a3a','#3a3a4e','#4a3a3a','#3e4a3a','#4a4a4a','#5a3a3a','#3a4a4a','#4e3a3a'];
@@ -921,29 +903,65 @@ function updatePeds() {
 }
 
 function updateCouriers() {
-  for (const c of couriers) {
+  const TARGET_COUNT = 14;
+
+  for (let i = couriers.length - 1; i >= 0; i--) {
+    const c = couriers[i];
     const rg = roadGraph.h[c.routeIdx];
-    if (!rg) continue;
-    c.y += (rg.y - c.y) * 0.08;
-    c.speed += (c.grade.speed - c.speed) * 0.04;
-    c.speed = Math.min(c.speed, c.grade.speed); // cap
-    const dx = Math.cos(c.angle) * c.speed;
-    c.x += dx;
-    if (c.x > rg.xMax - T) {
-      c.routeDir = -1;
-      c.angle = -Math.PI/2;
-      c.x = rg.xMax - T;
+    if (!rg) { couriers.splice(i, 1); continue; }
+
+    // Snap to road lane Y
+    const laneY = rg.y;
+    c.y += (laneY - c.y) * 0.10;
+    c.y = Math.max(laneY - T, Math.min(laneY + T, c.y));
+
+    // Accelerate to grade speed
+    c.speed += (c.grade.speed - c.speed) * 0.05;
+    c.speed = Math.min(c.speed, c.grade.speed);
+
+    // Move along X by routeDir
+    c.x += c.routeDir * c.speed;
+    c.angle = c.routeDir > 0 ? Math.PI/2 : -Math.PI/2;
+
+    // Despawn when off viewport, respawn from opposite edge
+    const offscreen = c.routeDir > 0
+      ? c.x > camX + W + CAR_GAP
+      : c.x < camX - CAR_GAP;
+
+    if (offscreen) {
+      const visRoads = roadGraph.h.filter((r, idx) =>
+        r.y > camY - CAR_GAP && r.y < camY + H + CAR_GAP
+      );
+      if (visRoads.length === 0) { couriers.splice(i, 1); continue; }
+      const newRg = visRoads[Math.floor(Math.random() * visRoads.length)];
+      c.routeIdx = roadGraph.h.indexOf(newRg);
+      c.y = newRg.y;
+      c.x = c.routeDir > 0 ? camX - CAR_GAP : camX + W + CAR_GAP;
+      c.speed = c.grade.speed;
+      // Randomise grade on re-entry for variety
+      c.grade = COURIER_GRADES[Math.floor(Math.random() * COURIER_GRADES.length)];
     }
-    if (c.x < rg.xMin + T) {
-      c.routeDir = 1;
-      c.angle = Math.PI/2;
-      c.x = rg.xMin + T;
-    }
-    // Occasionally switch road
-    if (Math.random() < 0.001) {
-      const ni = Math.floor(Math.random()*roadGraph.h.length);
-      c.routeIdx = ni;
-    }
+  }
+
+  // Top up
+  while (couriers.length < TARGET_COUNT) {
+    const grade = COURIER_GRADES[Math.floor(Math.random() * COURIER_GRADES.length)];
+    const visRoads = roadGraph.h.filter(r =>
+      r.y > camY - CAR_GAP && r.y < camY + H + CAR_GAP
+    );
+    const pool = visRoads.length ? visRoads : roadGraph.h;
+    const rg = pool[Math.floor(Math.random() * pool.length)];
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    couriers.push({
+      x: dir > 0 ? camX - CAR_GAP : camX + W + CAR_GAP,
+      y: rg.y,
+      speed: grade.speed,
+      grade,
+      routeIdx: roadGraph.h.indexOf(rg),
+      routeDir: dir,
+      angle: dir > 0 ? Math.PI/2 : -Math.PI/2,
+      racing: false,
+    });
   }
 }
 
@@ -1782,7 +1800,7 @@ function startGame() {
   genWorld();
   resetPlayer();
   spawnPeds(100);
-  spawnCouriers(14);
+  spawnCouriers();
   spawnCars(22);
   spawnCop();
 
