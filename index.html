@@ -577,7 +577,7 @@ function spawnCars(count) {
     const colors = ['#5a4a3a','#3a3a4e','#4a3a3a','#3e4a3a','#4a4a4a','#5a3a3a'];
     cars.push({
       x: rg.xMin + Math.random()*(rg.xMax-rg.xMin),
-      y: rg.y + dir*T*0.4,
+      y: rg.y + dir*T*0.4,   // exact lane Y from the start
       vx: 0, vy: 0,
       speed: 0,
       targetSpeed: 1.0 + Math.random()*0.8,
@@ -927,7 +927,11 @@ function updateCars() {
   for (const car of cars) {
     const rg = roadGraph.h[car.routeIdx];
     if (!rg) continue;
-    car.y += (rg.y + car.dir * T * 0.4 - car.y) * 0.06;
+
+    // Snap Y to lane — small lerp, but hard-clamp so car never drifts far off road
+    const laneY = rg.y + car.dir * T * 0.4;
+    car.y += (laneY - car.y) * 0.12;
+    car.y = Math.max(laneY - T, Math.min(laneY + T, car.y)); // clamp to ±1 tile
 
     // Look-ahead
     const lookDist = 48;
@@ -939,7 +943,6 @@ function updateCars() {
         blocked = true; break;
       }
     }
-    // Player look
     if (Math.abs(player.y - car.y) < 20 && Math.abs(player.x - lookX) < 30 && Math.sign(player.x - car.x) === car.dir) {
       blocked = true;
     }
@@ -947,18 +950,21 @@ function updateCars() {
     car.braking = blocked;
     const ts = blocked ? 0 : car.targetSpeed;
     car.speed += (ts - car.speed) * 0.08;
+    car.speed = Math.max(0, Math.min(car.targetSpeed, car.speed)); // cap
     car.x += car.dir * car.speed;
 
-    // Wrap
-    if (car.x > rg.xMax) car.x = rg.xMin;
-    if (car.x < rg.xMin) car.x = rg.xMax;
+    // Wrap X within road bounds
+    if (car.x > rg.xMax + T) car.x = rg.xMin - T;
+    if (car.x < rg.xMin - T) car.x = rg.xMax + T;
 
-    // Switch road occasionally
+    // Switch road — teleport Y immediately to avoid cross-world drift
     if (Math.random() < 0.001) {
       const ni = 1 + Math.floor(Math.random()*(roadGraph.h.length-2));
       car.routeIdx = ni;
       car.dir = Math.random()<0.5?1:-1;
       car.angle = car.dir > 0 ? Math.PI/2 : -Math.PI/2;
+      const nrg = roadGraph.h[ni];
+      if (nrg) car.y = nrg.y + car.dir * T * 0.4; // teleport, not lerp
     }
   }
 }
