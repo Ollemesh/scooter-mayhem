@@ -504,26 +504,45 @@ let peds = [], couriers = [], cars = [], cops = [];
 let activeCourier = null;
 
 const COURIER_GRADES = [
-  { name:'Стажёр',  speed:2.2,  color:'#664400', boxColor:'#aa7700', label:'🐢', reward:80  },
-  { name:'Джун',    speed:3.8,  color:'#444488', boxColor:'#6666bb', label:'🚲', reward:150 },
-  { name:'Мидл',    speed:5.2,  color:'#226622', boxColor:'#448844', label:'🛵', reward:240 },
-  { name:'Сеньор',  speed:7.0,  color:'#882222', boxColor:'#cc4444', label:'🔥', reward:400 },
-  { name:'DEMON',   speed:9.5,  color:'#111111', boxColor:'#880000', label:'💀', reward:999 },
+  { name:'Стажёр',  speed:1.2,  color:'#664400', boxColor:'#aa7700', label:'🐢', reward:80  },
+  { name:'Джун',    speed:1.9,  color:'#444488', boxColor:'#6666bb', label:'🚲', reward:150 },
+  { name:'Мидл',    speed:2.6,  color:'#226622', boxColor:'#448844', label:'🛵', reward:240 },
+  { name:'Сеньор',  speed:3.5,  color:'#882222', boxColor:'#cc4444', label:'🔥', reward:400 },
+  { name:'DEMON',   speed:4.8,  color:'#111111', boxColor:'#880000', label:'💀', reward:999 },
 ];
+
+// Collect all sidewalk tile centers for pedestrian spawning
+function getSidewalkSpots() {
+  const spots = [];
+  const TW = C.GW * STEP + C.ROAD;
+  const TH = C.GH * STEP + C.ROAD;
+  for (let ty = 1; ty < TH-1; ty++) {
+    for (let tx = 1; tx < TW-1; tx++) {
+      const cell = tileMap[ty] && tileMap[ty][tx];
+      if (cell && cell.type === 'sidewalk') {
+        spots.push({ x: (tx+0.5)*T, y: (ty+0.5)*T });
+      }
+    }
+  }
+  return spots;
+}
 
 function spawnPeds(count) {
   peds = [];
+  const spots = getSidewalkSpots();
+  if (spots.length === 0) return;
   for (let i = 0; i < count; i++) {
-    const rg = roadGraph.h[Math.floor(Math.random()*roadGraph.h.length)];
+    const sp = spots[Math.floor(Math.random()*spots.length)];
+    // Walk along the sidewalk: pick a horizontal or vertical angle (±90° aligned)
+    const axisAngles = [0, Math.PI/2, Math.PI, Math.PI*1.5];
+    const angle = axisAngles[Math.floor(Math.random()*axisAngles.length)];
     peds.push({
-      x: rg.xMin + Math.random()*(rg.xMax - rg.xMin),
-      y: rg.y + (Math.random()<0.5?-1:1)*(C.ROAD*T/2+12),
-      vx:0, vy:0,
-      angle: Math.random()*Math.PI*2,
+      x: sp.x, y: sp.y,
+      angle,
+      walkAngle: angle, // preferred walking direction
       state:'WALK',
-      timer: 0,
+      timer: Math.floor(Math.random()*120),
       scared: false,
-      fled: false,
     });
   }
 }
@@ -561,7 +580,7 @@ function spawnCars(count) {
       y: rg.y + dir*T*0.4,
       vx: 0, vy: 0,
       speed: 0,
-      targetSpeed: 1.4 + Math.random()*1.2,
+      targetSpeed: 1.0 + Math.random()*0.8,
       angle: dir > 0 ? Math.PI/2 : -Math.PI/2,
       dir,
       routeAxis:'h',
@@ -842,44 +861,62 @@ function updatePlayer(dt) {
 }
 
 function updatePeds() {
+  const PED_SPEED = 0.55;
   for (const p of peds) {
     if (p.state === 'WALK') {
-      p.x += Math.cos(p.angle) * 0.6;
-      p.y += Math.sin(p.angle) * 0.6;
+      const nx = p.x + Math.cos(p.angle) * PED_SPEED;
+      const ny = p.y + Math.sin(p.angle) * PED_SPEED;
+      // Only move if destination is sidewalk or road (not building/out of bounds)
+      const destType = (tileMap[Math.floor(ny/T)] && tileMap[Math.floor(ny/T)][Math.floor(nx/T)] || {}).type;
+      if (destType === 'sidewalk' || destType === 'road') {
+        p.x = nx;
+        p.y = ny;
+      } else {
+        // Bounce: pick a new sidewalk-safe direction (perpendicular or reverse)
+        const turns = [Math.PI/2, -Math.PI/2, Math.PI, -Math.PI*0.25, Math.PI*0.25];
+        p.angle += turns[Math.floor(Math.random()*turns.length)];
+        p.timer = 40 + Math.floor(Math.random()*80);
+      }
       p.timer--;
-      if (p.timer <= 0 || Math.random() < 0.01) {
-        p.angle += (Math.random()-0.5)*1.5;
-        p.timer = 60 + Math.floor(Math.random()*120);
+      if (p.timer <= 0) {
+        // Randomly turn 90° left or right to stay on grid
+        const turns90 = [0, Math.PI/2, -Math.PI/2, Math.PI];
+        p.angle = turns90[Math.floor(Math.random()*turns90.length)];
+        p.timer = 80 + Math.floor(Math.random()*160);
       }
     } else if (p.state === 'FLEE') {
       const awayAngle = Math.atan2(p.y - player.y, p.x - player.x);
-      p.x += Math.cos(awayAngle) * 2.5;
-      p.y += Math.sin(awayAngle) * 2.5;
+      const fx = p.x + Math.cos(awayAngle) * 2.2;
+      const fy = p.y + Math.sin(awayAngle) * 2.2;
+      const ft = (tileMap[Math.floor(fy/T)] && tileMap[Math.floor(fy/T)][Math.floor(fx/T)] || {}).type;
+      if (ft === 'sidewalk' || ft === 'road') { p.x = fx; p.y = fy; }
       p.timer--;
-      if (p.timer <= 0) { p.state = 'WALK'; p.timer = 120; }
+      if (p.timer <= 0) { p.state = 'WALK'; p.timer = 100; p.angle = Math.random()*Math.PI*2; }
     }
   }
 }
 
 function updateCouriers() {
   for (const c of couriers) {
-    // Simple straight-road movement
     const rg = roadGraph.h[c.routeIdx];
     if (!rg) continue;
     c.y += (rg.y - c.y) * 0.08;
-    c.speed += (c.targetSpeed - c.speed) * 0.05;
-    c.x += Math.cos(c.angle) * c.speed;
+    c.speed += (c.grade.speed - c.speed) * 0.04;
+    c.speed = Math.min(c.speed, c.grade.speed); // cap
+    const dx = Math.cos(c.angle) * c.speed;
+    c.x += dx;
     if (c.x > rg.xMax - T) {
       c.routeDir = -1;
-      c.angle = Math.PI + Math.PI/2;
+      c.angle = -Math.PI/2;
+      c.x = rg.xMax - T;
     }
     if (c.x < rg.xMin + T) {
       c.routeDir = 1;
       c.angle = Math.PI/2;
+      c.x = rg.xMin + T;
     }
-    c.x += c.routeDir * 0.01; // ensure movement dir
     // Occasionally switch road
-    if (Math.random() < 0.002) {
+    if (Math.random() < 0.001) {
       const ni = Math.floor(Math.random()*roadGraph.h.length);
       c.routeIdx = ni;
     }
@@ -1559,7 +1596,7 @@ function startGame() {
 
   genWorld();
   resetPlayer();
-  spawnPeds(28);
+  spawnPeds(60);
   spawnCouriers(14);
   spawnCars(22);
   spawnCop();
